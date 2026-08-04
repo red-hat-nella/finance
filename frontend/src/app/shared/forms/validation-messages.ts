@@ -1,0 +1,1 @@
+export const VALIDATION_MESSAGES={required:'Este campo es obligatorio.',email:'Ingrese un correo válido.',document:'Use entre 5 y 20 letras o números.',positiveMoney:'Ingrese un valor mayor que cero.',months:'Ingrese un número de meses entre 0 y 600.',contact:'Registre al menos un teléfono o correo.'} as const;

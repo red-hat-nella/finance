@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: frontend, labels: {app.kubernetes.io/name: frontend}}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: frontend}}
+    spec:
+      serviceAccountName: frontend
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: frontend
+          image: image-registry.openshift-image-registry.svc:5000/alternative-scoring/frontend:1.0.0
+          envFrom: [{configMapRef: {name: frontend-config}}]
+          ports: [{name: http, containerPort: 8080}]
+          livenessProbe: {httpGet: {path: /health/live, port: http}, initialDelaySeconds: 10, periodSeconds: 10}
+          readinessProbe: {httpGet: {path: /health/live, port: http}, initialDelaySeconds: 3, periodSeconds: 5}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 250m, memory: 128Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+          volumeMounts: [{name: tmp, mountPath: /tmp}, {name: nginx-cache, mountPath: /var/cache/nginx}, {name: runtime-config, mountPath: /opt/app-root/runtime-config}]
+      volumes: [{name: tmp, emptyDir: {}}, {name: nginx-cache, emptyDir: {}}, {name: runtime-config, emptyDir: {}}]

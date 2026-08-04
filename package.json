@@ -1,0 +1,17 @@
+{
+  "name": "alternative-credit-scoring-tools",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "contracts:lint": "redocly lint specs/001-alternative-credit-scoring/contracts/ingestion-public-v1.openapi.yaml specs/001-alternative-credit-scoring/contracts/scoring-internal-v1.openapi.yaml",
+    "contracts:bundle": "bash scripts/contracts/validate.sh --bundle",
+    "contracts:generate": "bash scripts/contracts/generate-public.sh && bash scripts/contracts/generate-scoring.sh",
+    "contracts:test": "node --test tests/contract/openapi-contracts.test.mjs"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.15.0",
+    "jose": "6.2.8",
+    "openapi-typescript": "7.13.0",
+    "yaml": "2.9.0"
+  }
+}

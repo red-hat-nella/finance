@@ -1,0 +1,1 @@
+import { AbstractControl, ValidationErrors } from '@angular/forms';export function months(control:AbstractControl):ValidationErrors|null{const value=Number(control.value);return Number.isInteger(value)&&value>=0&&value<=600?null:{months:true}}

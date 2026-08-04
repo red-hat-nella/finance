@@ -1,0 +1,1 @@
+import { AbstractControl, ValidationErrors } from '@angular/forms'; export function positiveMoney(control:AbstractControl):ValidationErrors|null{return Number(control.value)>0?null:{positiveMoney:true}}

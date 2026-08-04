@@ -1,0 +1,39 @@
+{
+  "applicant": {
+    "documentType": "PASSPORT",
+    "documentNumber": "PA74219",
+    "fullName": "Andres Luna",
+    "contact": {"phone": "+573207421900"}
+  },
+  "consent": {
+    "decision": "accepted",
+    "noticeVersion": "CONSENT-MVP-1.0.0",
+    "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION"
+  },
+  "alternativeData": {
+    "income": {
+      "availability": "provided",
+      "monthlyIncomeCop": "1800000.00",
+      "sourceType": "employment",
+      "stabilityMonths": 8
+    },
+    "utilities": {
+      "availability": "provided",
+      "references": [{
+        "serviceType": "electricity",
+        "periodStart": "2025-09-01",
+        "periodEnd": "2025-12-01",
+        "observedMonths": 4,
+        "totalObligations": 4,
+        "onTimeCount": 4,
+        "lateCount": 0,
+        "missedCount": 0,
+        "averageMonthlyAmountCop": "180000.00"
+      }]
+    },
+    "mobile": {
+      "availability": "unavailable",
+      "reason": "El solicitante no conserva informacion verificable del periodo movil."
+    }
+  }
+}

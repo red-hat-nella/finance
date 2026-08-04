@@ -1,0 +1,127 @@
+name: alternative-credit-scoring
+
+services:
+  postgres:
+    image: docker.io/library/postgres@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-alternative_scoring}
+      POSTGRES_USER: ${DATABASE_USER:-scoring_app}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  migrations:
+    image: docker.io/library/postgres@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${DATABASE_USER:-scoring_app}
+      PGDATABASE: ${DATABASE_NAME:-alternative_scoring}
+    secrets: [postgres_password]
+    volumes:
+      - ../../db/migrations:/migrations:ro,Z
+      - ./run-migrations.sh:/run-migrations.sh:ro,Z
+    command: ["bash", "/run-migrations.sh"]
+    restart: "no"
+    networks: [backend]
+
+  dev-auth:
+    image: registry.access.redhat.com/ubi9/nodejs-22@sha256:03d4c3669c9ada46d60e6c6ab5f1a305005d9ebe33f6dba0a24cb7b172ff75a3
+    environment:
+      PORT: 8080
+      JWKS_FILE: /run/dev-auth/jwks.json
+    volumes:
+      - ./.secrets:/run/dev-auth:ro,Z
+      - ./dev-auth/server.mjs:/opt/app-root/src/server.mjs:ro,Z
+    command: ["node", "/opt/app-root/src/server.mjs"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+
+  scoring:
+    build:
+      context: ../../services/scoring
+    depends_on:
+      dev-auth: {condition: service_healthy}
+    environment:
+      APP_ENV: development
+      SCORING_SERVICE_TOKEN_FILE: /run/secrets/scoring_service_token
+      CRITERIA_VERSION: ${SCORING_CRITERIA_VERSION:-SCORING-MVP-1.0.0}
+    secrets: [scoring_service_token]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  ingestion:
+    build:
+      context: ../../services/ingestion
+    depends_on:
+      migrations: {condition: service_completed_successfully}
+      scoring: {condition: service_healthy}
+      dev-auth: {condition: service_healthy}
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-alternative_scoring}
+      DATABASE_USER: ${DATABASE_USER:-scoring_app}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      DATABASE_SSL_MODE: disable
+      SCORING_BASE_URL: http://scoring:8080
+      SCORING_TIMEOUT_MS: 750
+      SCORING_CRITERIA_VERSION: SCORING-MVP-1.0.0
+      SCORING_SERVICE_TOKEN_FILE: /run/secrets/scoring_service_token
+      PII_ENCRYPTION_KEY_FILE: /run/secrets/pii_encryption_key
+      PII_HMAC_KEY_FILE: /run/secrets/pii_hmac_key
+      AUTH_ISSUER: http://dev-auth:8080
+      AUTH_JWKS_URL: http://dev-auth:8080/.well-known/jwks.json
+      AUTH_AUDIENCE: alternative-credit-scoring
+    secrets: [postgres_password,scoring_service_token,pii_encryption_key,pii_hmac_key]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health/ready').then(r=>{if(!r.ok)process.exit(1)})\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  frontend:
+    build:
+      context: ../../frontend
+    depends_on:
+      ingestion: {condition: service_healthy}
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    environment:
+      API_BASE_URL: /api/v1
+      AUTH_MODE: development
+      OIDC_ISSUER: ""
+      OIDC_CLIENT_ID: alternative-credit-scoring-web
+      OIDC_SCOPE: openid profile
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+volumes:
+  postgres-data:
+
+networks:
+  backend:
+    internal: true

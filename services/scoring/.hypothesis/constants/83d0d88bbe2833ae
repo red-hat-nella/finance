@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/main.py
+# hypothesis_version: 6.151.9
+
+[400, 401, 409, 413, 422, 262144, '.', '1.0.0', 'INTERNAL_BAD_REQUEST', 'INTERNAL_FAILURE', 'INVALID_VALUE', 'PAYLOAD_TOO_LARGE', 'Solicitud rechazada', 'VALIDATION_FAILED', 'X-Request-Id', 'body', 'code', 'content-length', 'field', 'http', 'loc', 'message']

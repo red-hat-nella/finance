@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/settings.py
+# hypothesis_version: 6.151.9
+
+['SCORING-MVP-1.0.0', 'Settings', 'after', 'development', 'ignore', 'production']

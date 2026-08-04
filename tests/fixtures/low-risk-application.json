@@ -1,0 +1,42 @@
+{
+  "applicant": {
+    "documentType": "CC",
+    "documentNumber": "1001032",
+    "fullName": "Maria Paula Rojas",
+    "contact": {"phone": "+573001001032", "email": "maria.rojas@example.test"}
+  },
+  "consent": {
+    "decision": "accepted",
+    "noticeVersion": "CONSENT-MVP-1.0.0",
+    "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION"
+  },
+  "alternativeData": {
+    "income": {
+      "availability": "provided",
+      "monthlyIncomeCop": "4000000.00",
+      "sourceType": "employment",
+      "stabilityMonths": 48
+    },
+    "utilities": {
+      "availability": "provided",
+      "references": [{
+        "serviceType": "electricity",
+        "periodStart": "2025-01-01",
+        "periodEnd": "2025-12-01",
+        "observedMonths": 12,
+        "totalObligations": 12,
+        "onTimeCount": 12,
+        "lateCount": 0,
+        "missedCount": 0,
+        "averageMonthlyAmountCop": "250000.00"
+      }]
+    },
+    "mobile": {
+      "availability": "provided",
+      "mode": "postpaid",
+      "tenureMonths": 48,
+      "observedMonths": 12,
+      "regularMonths": 12
+    }
+  }
+}

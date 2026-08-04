@@ -1,0 +1,1 @@
+import { AbstractControl, ValidationErrors } from '@angular/forms';export function dateRange(control:AbstractControl):ValidationErrors|null{const start=control.get('periodStart')?.value,end=control.get('periodEnd')?.value;return start&&end&&start<=end?null:{dateRange:true}}

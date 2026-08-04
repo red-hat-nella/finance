@@ -1,0 +1,43 @@
+{
+  "applicant": {
+    "documentType": "PPT",
+    "documentNumber": "PT90052",
+    "fullName": "Laura Gomez",
+    "contact": {"email": "laura.gomez@example.test"}
+  },
+  "consent": {
+    "decision": "accepted",
+    "noticeVersion": "CONSENT-MVP-1.0.0",
+    "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION"
+  },
+  "alternativeData": {
+    "income": {
+      "availability": "provided",
+      "monthlyIncomeCop": "1200000.00",
+      "sourceType": "other",
+      "sourceOtherDescription": "Ingresos ocasionales",
+      "stabilityMonths": 3
+    },
+    "utilities": {
+      "availability": "provided",
+      "references": [{
+        "serviceType": "gas",
+        "periodStart": "2025-01-01",
+        "periodEnd": "2025-12-01",
+        "observedMonths": 12,
+        "totalObligations": 12,
+        "onTimeCount": 5,
+        "lateCount": 3,
+        "missedCount": 4,
+        "averageMonthlyAmountCop": "600000.00"
+      }]
+    },
+    "mobile": {
+      "availability": "provided",
+      "mode": "prepaid",
+      "tenureMonths": 4,
+      "observedMonths": 10,
+      "regularMonths": 4
+    }
+  }
+}

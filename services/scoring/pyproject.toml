@@ -1,0 +1,54 @@
+[project]
+name = "alternative-credit-scoring-engine"
+version = "1.0.0"
+description = "Deterministic internal scoring engine without PII"
+requires-python = "==3.12.13"
+dependencies = [
+  "fastapi==0.139.2",
+  "pydantic==2.13.4",
+  "pydantic-settings==2.13.1",
+  "structlog==25.5.0",
+  "uvicorn[standard]==0.52.1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx==0.28.1",
+  "hypothesis==6.151.9",
+  "mypy==1.19.1",
+  "pytest==9.0.2",
+  "pytest-cov==7.0.0",
+  "ruff==0.15.6",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers --strict-config"
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["uvicorn.*"]
+ignore_missing_imports = true

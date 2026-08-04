@@ -1,0 +1,13 @@
+secrets:
+  postgres_password:
+    external: true
+    name: postgres_password
+  scoring_service_token:
+    external: true
+    name: scoring_service_token
+  pii_encryption_key:
+    external: true
+    name: pii_encryption_key
+  pii_hmac_key:
+    external: true
+    name: pii_hmac_key

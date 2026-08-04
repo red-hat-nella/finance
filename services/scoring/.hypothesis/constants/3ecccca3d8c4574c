@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/domain/explanations.py
+# hypothesis_version: 6.151.9
+
+['0.3', '0.4', '5.5', 'contributionPoints', 'dimension', 'dimensionIndex', 'direction', 'explanation', 'favorable', 'income', 'ingresos', 'mobile', 'neutral', 'observedSummary', 'rank', 'ruleCode', 'servicios públicos', 'telefonía móvil', 'unfavorable', 'utility', 'weight']

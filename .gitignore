@@ -1,0 +1,52 @@
+# Node / Angular
+node_modules/
+dist/
+build/
+coverage/
+.angular/
+.cache/
+playwright-report/
+test-results/
+blob-report/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.secret.yaml
+secrets/
+.kube/
+kubeconfig*
+
+# Runtime and tooling
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+specs/001-alternative-credit-scoring/validation-evidence/screenshots/
+
+# sdd
+.agents/
+.specify/
+specs/
+web-app.md

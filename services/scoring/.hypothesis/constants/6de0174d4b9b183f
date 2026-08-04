@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/api/models.py
+# hypothesis_version: 6.151.9
+
+[240, 300, 320, 400, 599, 600, 850, '1.0.0', 'DATA_NOT_AVAILABLE', 'PERIOD_NOT_AVAILABLE', 'SCORING-MVP-1.0.0', '^0\\.[0-9]{3}$', 'availability', 'electricity', 'evaluada', 'explanation', 'favorable', 'forbid', 'gas', 'income', 'internet', 'manual_review', 'mobile', 'neutral', 'other', 'postpaid', 'prepaid', 'provided', 'revision_manual', 'riesgo_alto', 'riesgo_bajo', 'riesgo_medio', 'scored', 'unavailable', 'unfavorable', 'utility', 'water']

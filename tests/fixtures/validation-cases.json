@@ -1,0 +1,20 @@
+[
+  {"id":"VAL-001","path":"applicant.documentNumber","message":"Ingresa un documento valido para el tipo seleccionado"},
+  {"id":"VAL-002","path":"applicant.fullName","message":"Ingresa el nombre completo"},
+  {"id":"VAL-003","path":"applicant.contact","message":"Ingresa un telefono o correo valido"},
+  {"id":"VAL-004","path":"consent.decision","message":"Se requiere consentimiento registrado para evaluar"},
+  {"id":"VAL-005","path":"alternativeData.income.monthlyIncomeCop","message":"Ingresa un ingreso en COP mayor que cero o indica que no esta disponible"},
+  {"id":"VAL-006","path":"alternativeData.income.sourceType","message":"Selecciona o describe la fuente de ingreso"},
+  {"id":"VAL-007","path":"alternativeData.income.stabilityMonths","message":"Ingresa meses entre 0 y 600"},
+  {"id":"VAL-008","path":"alternativeData.utilities.references","message":"Agrega una referencia valida o indica por que no esta disponible"},
+  {"id":"VAL-009","path":"alternativeData.utilities.references.observedMonths","message":"El periodo debe estar entre 1 y 12 meses"},
+  {"id":"VAL-010","path":"alternativeData.utilities.references","message":"Los pagos deben coincidir con el periodo observado"},
+  {"id":"VAL-011","path":"alternativeData.utilities.references.averageMonthlyAmountCop","message":"Ingresa un monto mensual valido en COP"},
+  {"id":"VAL-012","path":"alternativeData.mobile.mode","message":"Selecciona la modalidad movil"},
+  {"id":"VAL-013","path":"alternativeData.mobile.tenureMonths","message":"Ingresa meses entre 0 y 600"},
+  {"id":"VAL-014","path":"alternativeData.mobile.regularMonths","message":"La regularidad debe coincidir con el periodo movil"},
+  {"id":"VAL-015","path":"availability.reason","message":"Explica por que el dato no esta disponible"},
+  {"id":"VAL-016","path":"filters.dateRange","message":"La fecha inicial no puede ser posterior a la final"},
+  {"id":"VAL-017","path":"filters.states","message":"Selecciona un estado valido"},
+  {"id":"VAL-018","path":"evaluation","message":"No fue posible validar el resultado. Intenta de nuevo"}
+]

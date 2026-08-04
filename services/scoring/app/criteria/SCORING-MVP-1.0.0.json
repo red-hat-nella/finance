@@ -1,0 +1,8 @@
+{
+  "version": "SCORING-MVP-1.0.0",
+  "inputSchemaVersion": "1.0.0",
+  "weights": {"utility": "0.400", "mobile": "0.300", "income": "0.300"},
+  "score": {"minimum": 300, "maximum": 850, "multiplier": "5.5", "rounding": "ROUND_HALF_UP"},
+  "bands": {"lowMinimum": 700, "mediumMinimum": 550}
+}
+

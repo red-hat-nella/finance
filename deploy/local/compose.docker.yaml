@@ -1,0 +1,6 @@
+secrets:
+  postgres_password: {file: ./.secrets/postgres-password}
+  scoring_service_token: {file: ./.secrets/scoring-service-token}
+  pii_encryption_key: {file: ./.secrets/pii-encryption-key}
+  pii_hmac_key: {file: ./.secrets/pii-hmac-key}
+

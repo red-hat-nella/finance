@@ -1,0 +1,10 @@
+# Los digests se resuelven con scripts/images/verify-lock.sh antes de construir.
+# Resueltos el 2026-08-04 con skopeo inspect.
+frontend_build=registry.access.redhat.com/ubi9/nodejs-22@sha256:03d4c3669c9ada46d60e6c6ab5f1a305005d9ebe33f6dba0a24cb7b172ff75a3
+frontend_runtime=registry.access.redhat.com/ubi9/nginx-124@sha256:46ddcae20e61335ee5224c354721018b7cd9b35d5c505d9ba768d9b60569c48a
+ingestion=registry.access.redhat.com/ubi9/nodejs-22@sha256:03d4c3669c9ada46d60e6c6ab5f1a305005d9ebe33f6dba0a24cb7b172ff75a3
+scoring=registry.access.redhat.com/ubi9/python-312@sha256:e7d8c7e8f74e7fb8a8599e15c4eef37984e0919c7afe335a31b12a39e98e6b9a
+# Manifest-list digest publicado por el catalogo Red Hat; pull requiere aceptar
+# terminos y autenticar registry.redhat.io en el entorno de despliegue.
+postgres_openshift=registry.redhat.io/rhel9/postgresql-16@sha256:b3a61b02f3e9b40160449463eb692e86d8a8386f443b96ac0802f92e50ac87e4
+postgres_local=docker.io/library/postgres@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55

@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/api/health.py
+# hypothesis_version: 6.151.9
+
+[503, '/health/live', '/health/ready', '1.0.0', 'criteriaChecksum', 'criteriaVersion', 'ok', 'ready', 'scoring', 'service', 'status', 'version']

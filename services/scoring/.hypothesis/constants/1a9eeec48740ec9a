@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/domain/sufficiency.py
+# hypothesis_version: 6.151.9
+
+['MISSING_INCOME', 'MISSING_MOBILE_DATA', 'MISSING_UTILITY_DATA', 'availability', 'code', 'dimension', 'income', 'lateCount', 'message', 'missedCount', 'mobile', 'observedMonths', 'onTimeCount', 'provided', 'references', 'regularMonths', 'stabilityMonths', 'totalObligations', 'utilities', 'utility']

@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/domain/scoring.py
+# hypothesis_version: 6.151.9
+
+[300, 550, 700, 850, '0.3', '0.4', '0.6', '5.5', 'MEDIUM_RISK_BAND', 'code', 'dimension', 'evaluada', 'explanation', 'factors', 'income', 'manualReviewReasons', 'manual_review', 'message', 'mobile', 'monthlyIncomeCop', 'observedMonths', 'onTimeCount', 'recommendation', 'references', 'regularMonths', 'resultType', 'revision_manual', 'riesgo_alto', 'riesgo_bajo', 'riesgo_medio', 'riskBand', 'score', 'scored', 'stabilityMonths', 'status', 'tenureMonths', 'text', 'totalObligations', 'utilities', 'utility']

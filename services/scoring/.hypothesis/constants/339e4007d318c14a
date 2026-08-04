@@ -1,0 +1,4 @@
+# file: /home/mpolo/Documents/red-hat/projects/finance2/services/scoring/app/api/scoring.py
+# hypothesis_version: 6.151.9
+
+[300, 400, 409, 850, 1000, '/internal/v1/scores', 'X-Criteria-Checksum', 'X-Evaluation-Id', 'calculatedAt', 'criteriaVersion', 'evaluationId', 'income', 'inputHash', 'json', 'maximum', 'minimum', 'mobile', 'score.calculated', 'scoreScale', 'scoring', 'utilities']

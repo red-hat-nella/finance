@@ -1,0 +1,31 @@
+{
+  "applicant": {
+    "documentType": "CC",
+    "documentNumber": "900100",
+    "fullName": "Prueba Invalida",
+    "contact": {"phone": "+573009001000"}
+  },
+  "consent": {
+    "decision": "accepted",
+    "noticeVersion": "CONSENT-MVP-1.0.0",
+    "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION"
+  },
+  "alternativeData": {
+    "income": {"availability": "provided", "monthlyIncomeCop": "2000000.00", "sourceType": "employment", "stabilityMonths": 12},
+    "utilities": {
+      "availability": "provided",
+      "references": [{
+        "serviceType": "water",
+        "periodStart": "2025-01-01",
+        "periodEnd": "2025-12-01",
+        "observedMonths": 12,
+        "totalObligations": 12,
+        "onTimeCount": 10,
+        "lateCount": 4,
+        "missedCount": 1,
+        "averageMonthlyAmountCop": "300000.00"
+      }]
+    },
+    "mobile": {"availability": "provided", "mode": "postpaid", "tenureMonths": 20, "observedMonths": 12, "regularMonths": 10}
+  }
+}

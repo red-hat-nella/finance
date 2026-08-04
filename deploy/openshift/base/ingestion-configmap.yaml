@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ingestion-config}
+data:
+  NODE_ENV: production
+  PORT: "8080"
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: alternative_scoring
+  DATABASE_USER: scoring_app
+  DATABASE_SSL_MODE: require
+  SCORING_BASE_URL: http://scoring:8080
+  SCORING_TIMEOUT_MS: "750"
+  SCORING_CRITERIA_VERSION: SCORING-MVP-1.0.0
+  AUTH_ISSUER: https://identity.example.test/realms/credit
+  AUTH_JWKS_URL: https://identity.example.test/realms/credit/protocol/openid-connect/certs
+  AUTH_AUDIENCE: alternative-credit-scoring
+  AUTH_ALLOWED_ALGORITHMS: RS256
+  LOG_LEVEL: info
+

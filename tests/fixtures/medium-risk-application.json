@@ -1,0 +1,42 @@
+{
+  "applicant": {
+    "documentType": "CE",
+    "documentNumber": "741285",
+    "fullName": "Carlos Medina",
+    "contact": {"phone": "+573107412850"}
+  },
+  "consent": {
+    "decision": "accepted",
+    "noticeVersion": "CONSENT-MVP-1.0.0",
+    "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION"
+  },
+  "alternativeData": {
+    "income": {
+      "availability": "provided",
+      "monthlyIncomeCop": "2400000.00",
+      "sourceType": "self_employed",
+      "stabilityMonths": 14
+    },
+    "utilities": {
+      "availability": "provided",
+      "references": [{
+        "serviceType": "water",
+        "periodStart": "2025-01-01",
+        "periodEnd": "2025-12-01",
+        "observedMonths": 12,
+        "totalObligations": 12,
+        "onTimeCount": 9,
+        "lateCount": 2,
+        "missedCount": 1,
+        "averageMonthlyAmountCop": "500000.00"
+      }]
+    },
+    "mobile": {
+      "availability": "provided",
+      "mode": "prepaid",
+      "tenureMonths": 18,
+      "observedMonths": 12,
+      "regularMonths": 10
+    }
+  }
+}

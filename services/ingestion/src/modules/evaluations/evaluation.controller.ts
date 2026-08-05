@@ -5,6 +5,11 @@ import {
   EvaluationNotFoundError,
   type GetEvaluationDetailService,
 } from "../history/get-evaluation-detail.service.js";
+import {
+  EvaluateApplicationError,
+  type EvaluateApplicationService,
+} from "./evaluate-application.service.js";
+import type { RetryEvaluationService } from "./retry-evaluation.service.js";
 
 const evaluationIdSchema = z.uuid();
 const dateTimeSchema = z.iso.datetime({ offset: true });
@@ -123,6 +128,7 @@ export const evaluationDetailResponseSchema = z
     revisionNumber: z.number().int().min(1),
     attemptNumber: z.number().int().min(1),
     state: z.enum(["evaluando", "evaluada", "revision_manual", "error"]),
+    errorCode: z.string().max(64).nullable().optional(),
     score: z.number().int().min(300).max(850).nullable(),
     scoreScale: z
       .object({ minimum: z.literal(300), maximum: z.literal(850) })
@@ -217,6 +223,178 @@ export function getEvaluationController(service: GetEvaluationDetailService) {
         return;
       }
       next(error);
+    }
+  };
+}
+
+export function evaluateApplicationController(
+  service: EvaluateApplicationService,
+) {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    const actor = req.actor;
+    if (!actor?.roles.includes("credit_analyst")) {
+      sendProblem(req, res, {
+        status: 403,
+        title: "Acceso denegado",
+        detail: "Solo un analista de crédito puede solicitar evaluaciones.",
+        code: "FORBIDDEN",
+      });
+      return;
+    }
+    const applicationId = evaluationIdSchema.safeParse(
+      req.params.applicationId,
+    );
+    if (!applicationId.success) {
+      sendProblem(req, res, {
+        status: 404,
+        title: "Solicitud no disponible",
+        detail: "No fue posible abrir la solicitud solicitada.",
+        code: "APPLICATION_NOT_AVAILABLE",
+      });
+      return;
+    }
+    const key = req.header("Idempotency-Key");
+    const ifMatch = req.header("If-Match");
+    if (
+      !key ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        key,
+      )
+    ) {
+      sendProblem(req, res, {
+        status: 400,
+        title: "Falta información de la solicitud",
+        detail: "Envíe una clave de idempotencia válida.",
+        code: "IDEMPOTENCY_KEY_REQUIRED",
+      });
+      return;
+    }
+    if (!ifMatch) {
+      sendProblem(req, res, {
+        status: 412,
+        title: "El borrador cambió",
+        detail: "Recargue la solicitud antes de evaluar.",
+        code: "REVISION_CONFLICT",
+        retryable: true,
+      });
+      return;
+    }
+    try {
+      const result = await service.execute(
+        applicationId.data,
+        req.body,
+        ifMatch,
+        key,
+        actor,
+        req.requestId,
+      );
+      res
+        .location(result.location)
+        .set("Idempotency-Replayed", String(result.replayed))
+        .status(result.status)
+        .json(result.body);
+    } catch (error) {
+      if (!(error instanceof EvaluateApplicationError)) {
+        next(error);
+        return;
+      }
+      sendProblem(req, res, {
+        status: error.status,
+        title:
+          error.status === 404
+            ? "Solicitud no disponible"
+            : error.status === 412
+              ? "El borrador cambió"
+              : error.status === 422
+                ? "No se puede evaluar"
+                : error.status >= 500
+                  ? "No fue posible calcular el score"
+                  : "Operación en conflicto",
+        detail: error.detail,
+        code: error.code,
+        retryable: error.retryable,
+        errors: error.errors,
+        ...(error.evaluationId
+          ? { evaluationId: error.evaluationId, evaluationStatus: "error" }
+          : {}),
+      });
+    }
+  };
+}
+
+export function retryEvaluationController(service: RetryEvaluationService) {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    const actor = req.actor;
+    if (!actor?.roles.includes("credit_analyst")) {
+      sendProblem(req, res, {
+        status: 403,
+        title: "Acceso denegado",
+        detail: "Solo el analista propietario puede reintentar evaluaciones.",
+        code: "FORBIDDEN",
+      });
+      return;
+    }
+    const evaluationId = evaluationIdSchema.safeParse(req.params.evaluationId);
+    if (!evaluationId.success) {
+      sendNotFound(req, res);
+      return;
+    }
+    const key = req.header("Idempotency-Key");
+    if (
+      !key ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        key,
+      )
+    ) {
+      sendProblem(req, res, {
+        status: 400,
+        title: "Falta información de la solicitud",
+        detail: "Envíe una clave de idempotencia válida.",
+        code: "IDEMPOTENCY_KEY_REQUIRED",
+      });
+      return;
+    }
+    try {
+      const result = await service.execute(
+        evaluationId.data,
+        key,
+        actor,
+        req.requestId,
+      );
+      res
+        .location(result.location)
+        .set("Idempotency-Replayed", String(result.replayed))
+        .status(result.status)
+        .json(result.body);
+    } catch (error) {
+      if (!(error instanceof EvaluateApplicationError)) {
+        next(error);
+        return;
+      }
+      sendProblem(req, res, {
+        status: error.status,
+        title:
+          error.status === 404
+            ? "Evaluación no disponible"
+            : error.status >= 500
+              ? "No fue posible calcular el score"
+              : "Operación en conflicto",
+        detail: error.detail,
+        code: error.code,
+        retryable: error.retryable,
+        errors: error.errors,
+        ...(error.evaluationId
+          ? { evaluationId: error.evaluationId, evaluationStatus: "error" }
+          : {}),
+      });
     }
   };
 }

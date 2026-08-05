@@ -1,6 +1,8 @@
 import { DevAuthAdapter } from './dev-auth.adapter';
 
 describe('development authentication adapter', () => {
+  afterEach(() => window.sessionStorage.clear());
+
   it('provides only the explicit local analyst session and never a bearer token', () => {
     const auth = new DevAuthAdapter();
     const session = auth.session();
@@ -17,5 +19,20 @@ describe('development authentication adapter', () => {
     const auth = new DevAuthAdapter();
     expect(auth.hasAnyRole(['credit_analyst'])).toBeTrue();
     expect(auth.hasAnyRole(['supervisor', 'auditor'])).toBeFalse();
+  });
+
+  it('allows an explicit session-scoped supervisor or auditor fixture', () => {
+    window.sessionStorage.setItem('scoring.dev.role', 'supervisor');
+    const supervisor = new DevAuthAdapter();
+    expect(supervisor.session()).toEqual(
+      jasmine.objectContaining({
+        actorId: 'supervisor-local',
+        roles: ['supervisor'],
+      }),
+    );
+    expect(supervisor.hasAnyRole(['supervisor'])).toBeTrue();
+
+    window.sessionStorage.setItem('scoring.dev.role', 'unexpected');
+    expect(new DevAuthAdapter().session().roles).toEqual(['credit_analyst']);
   });
 });

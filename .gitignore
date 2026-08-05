@@ -32,6 +32,7 @@ htmlcov/
 *.p12
 *.secret.yaml
 secrets/
+**/.secrets/
 .kube/
 kubeconfig*
 

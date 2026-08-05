@@ -1,31 +1,15 @@
-export const AUDIT_EVENT_TYPES = [
-  "APPLICATION_CREATED",
-  "APPLICATION_UPDATED",
-  "CONSENT_RECORDED",
-  "EVALUATION_STARTED",
-  "EVALUATION_COMPLETED",
-  "EVALUATION_FAILED",
-  "EVALUATION_RETRIED",
-  "EVALUATION_VIEWED",
-  "HISTORY_SEARCHED",
-  "AUDIT_VIEWED",
-  "RETENTION_COMPLETED",
-] as const;
-export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
+import {
+  AUDIT_EVENT_CATALOG,
+  SAFE_AUDIT_METADATA_FIELDS,
+  type AuditEventType,
+} from "./event-catalog.js";
+
+export const AUDIT_EVENT_TYPES = Object.freeze(
+  Object.keys(AUDIT_EVENT_CATALOG) as AuditEventType[],
+);
+export type { AuditEventType } from "./event-catalog.js";
 export type AuditOutcome = "success" | "blocked" | "denied" | "error";
-const SAFE_METADATA = new Set([
-  "revisionNumber",
-  "attemptNumber",
-  "state",
-  "riskBand",
-  "criteriaVersion",
-  "errorCode",
-  "filterTypes",
-  "resultCount",
-  "retentionRunId",
-  "fromStatus",
-  "toStatus",
-]);
+const SAFE_METADATA = new Set<string>(SAFE_AUDIT_METADATA_FIELDS);
 export function sanitizeAuditMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -40,8 +24,8 @@ export function sanitizeAuditMetadata(
 }
 export interface AuditEventInput {
   type: AuditEventType;
-  orgId: string;
-  actorId: string;
+  orgId?: string;
+  actorId?: string;
   roles: readonly string[];
   applicationId?: string;
   evaluationId?: string;

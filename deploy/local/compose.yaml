@@ -5,13 +5,15 @@ services:
     image: docker.io/library/postgres@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55
     environment:
       POSTGRES_DB: ${DATABASE_NAME:-alternative_scoring}
-      POSTGRES_USER: ${DATABASE_USER:-scoring_app}
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets: [postgres_password]
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets: [postgres_admin_password,postgres_password,postgres_retention_password]
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init/001-create-roles.sh:/docker-entrypoint-initdb.d/001-create-roles.sh:ro,Z
+      - ./postgres-init/001-create-roles.sql:/opt/scoring-init/001-create-roles.sql:ro,Z
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -23,9 +25,10 @@ services:
       postgres: {condition: service_healthy}
     environment:
       PGHOST: postgres
-      PGUSER: ${DATABASE_USER:-scoring_app}
+      PGUSER: postgres
       PGDATABASE: ${DATABASE_NAME:-alternative_scoring}
-    secrets: [postgres_password]
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets: [postgres_admin_password]
     volumes:
       - ../../db/migrations:/migrations:ro,Z
       - ./run-migrations.sh:/run-migrations.sh:ro,Z
@@ -68,7 +71,8 @@ services:
 
   ingestion:
     build:
-      context: ../../services/ingestion
+      context: ../..
+      dockerfile: services/ingestion/Dockerfile
     depends_on:
       migrations: {condition: service_completed_successfully}
       scoring: {condition: service_healthy}
@@ -97,6 +101,45 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks: [backend]
+
+  retention:
+    profiles: [jobs]
+    build:
+      context: ../..
+      dockerfile: services/ingestion/Dockerfile
+    depends_on:
+      migrations: {condition: service_completed_successfully}
+    command: ["node", "dist/cli.js", "retention", "--execute"]
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-alternative_scoring}
+      DATABASE_USER: scoring_retention_job
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_retention_password
+      DATABASE_SSL_MODE: disable
+      RETENTION_BATCH_SIZE: "500"
+    secrets: [postgres_retention_password]
+    networks: [backend]
+
+  reconciler:
+    profiles: [jobs]
+    build:
+      context: ../..
+      dockerfile: services/ingestion/Dockerfile
+    depends_on:
+      migrations: {condition: service_completed_successfully}
+    command: ["node", "dist/jobs/reconciler.js"]
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-alternative_scoring}
+      DATABASE_USER: ${DATABASE_USER:-scoring_app}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      DATABASE_SSL_MODE: disable
+    secrets: [postgres_password]
     networks: [backend]
 
   frontend:

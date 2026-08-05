@@ -3,11 +3,11 @@ import { authGuard, roleGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
-    path: 'applications/new',
+    path: 'applications',
     canActivate: [authGuard, roleGuard(['credit_analyst'])],
-    loadComponent: () =>
-      import('./features/applications/application-form-page.component').then(
-        (m) => m.ApplicationFormPageComponent,
+    loadChildren: () =>
+      import('./features/applications/application.routes').then(
+        (module) => module.APPLICATION_ROUTES,
       ),
   },
   {

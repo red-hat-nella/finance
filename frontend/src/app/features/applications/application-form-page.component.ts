@@ -1,36 +1,74 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { colombianDocument } from '../../shared/forms/document.validator';
+import { atLeastOneContact } from '../../shared/forms/contact.validator';
 import { positiveMoney } from '../../shared/forms/money.validator';
 import { months } from '../../shared/forms/months.validator';
 import { AlertComponent } from '../../shared/ui/alert.component';
-import { ApplicationApiService } from './application-api.service';
-import type { ApplicationInput } from './application-form.model';
+import { ConsentSectionComponent } from './sections/consent-section.component';
+import { ContactSectionComponent } from './sections/contact-section.component';
+import { IdentitySectionComponent } from './sections/identity-section.component';
+import { IncomeSectionComponent } from './sections/income-section.component';
+import { MobileSectionComponent } from './sections/mobile-section.component';
+import { UtilitiesSectionComponent } from './sections/utilities-section.component';
+import { ReviewSectionComponent } from './sections/review-section.component';
+import {
+  ErrorSummaryComponent,
+  FormErrorItem,
+} from './error-summary.component';
+import { ApplicationFacade } from './application.facade';
+import {
+  toApplicationDraft,
+  toApplicationFormValue,
+  toEvaluationInput,
+} from './application.mapper';
+import type {
+  DocumentType,
+  IncomeSource,
+  MobileMode,
+  ServiceType,
+} from './application-form.model';
+
+function otherIncomeSource(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as {
+    sourceType?: string;
+    sourceOtherDescription?: string;
+  };
+  return value.sourceType === 'other' && !value.sourceOtherDescription?.trim()
+    ? { sourceOtherDescription: true }
+    : null;
+}
 @Component({
   selector: 'app-application-form-page',
   standalone: true,
+  providers: [ApplicationFacade],
   imports: [
     ReactiveFormsModule,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatProgressSpinnerModule,
     AlertComponent,
+    IdentitySectionComponent,
+    ContactSectionComponent,
+    ConsentSectionComponent,
+    IncomeSectionComponent,
+    UtilitiesSectionComponent,
+    MobileSectionComponent,
+    ReviewSectionComponent,
+    ErrorSummaryComponent,
   ],
   template: `
     <div class="form-page">
@@ -44,192 +82,32 @@ import type { ApplicationInput } from './application-form.model';
         </div>
         <span class="step">Solicitud nueva</span>
       </div>
-      @if (error()) {
-        <app-alert type="error" title="Revise la información"
-          ><p>{{ error() }}</p></app-alert
+      <app-error-summary [items]="errorItems()" (focusControl)="focusControl($event)" />
+      @if (error() && !errorItems().length) {
+        <app-alert type="error" title="No fue posible continuar"><p>{{ error() }}</p></app-alert>
+      }
+      @if (saved()) {
+        <app-alert type="success" title="Borrador guardado"
+          ><p>La solicitud quedó guardada y puede continuar editándola.</p></app-alert
         >
       }
       <form class="surface" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <section>
-          <div class="section-heading">
-            <span>1</span>
-            <div>
-              <h2>Identificación y contacto</h2>
-              <p>Información básica para identificar al solicitante.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <mat-form-field appearance="outline"
-              ><mat-label>Tipo de documento</mat-label
-              ><mat-select formControlName="documentType"
-                ><mat-option value="CC">Cédula de ciudadanía</mat-option
-                ><mat-option value="CE">Cédula de extranjería</mat-option
-                ><mat-option value="PPT"
-                  >Permiso temporal</mat-option
-                ></mat-select
-              ></mat-form-field
-            >
-            <mat-form-field appearance="outline"
-              ><mat-label>Número de documento</mat-label
-              ><input
-                #firstField
-                matInput
-                formControlName="documentNumber"
-                autocomplete="off"
-              />
-              @if (
-                form.controls.documentNumber.invalid &&
-                form.controls.documentNumber.touched
-              ) {
-                <mat-error>Use entre 5 y 20 letras o números.</mat-error>
-              }
-            </mat-form-field>
-            <mat-form-field class="span-2" appearance="outline"
-              ><mat-label>Nombre completo</mat-label
-              ><input matInput formControlName="fullName" autocomplete="name"
-            /></mat-form-field>
-            <mat-form-field appearance="outline"
-              ><mat-label>Teléfono</mat-label
-              ><input
-                matInput
-                formControlName="phone"
-                autocomplete="tel"
-              /><mat-hint>Ejemplo: +57 300 123 4567</mat-hint></mat-form-field
-            >
-            <mat-form-field appearance="outline"
-              ><mat-label>Correo electrónico</mat-label
-              ><input
-                matInput
-                type="email"
-                formControlName="email"
-                autocomplete="email"
-            /></mat-form-field>
-          </div>
-        </section>
-        <section>
-          <div class="section-heading">
-            <span>2</span>
-            <div>
-              <h2>Ingresos estimados</h2>
-              <p>Datos declarados sobre nivel y estabilidad de ingresos.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <mat-form-field appearance="outline"
-              ><mat-label>Ingreso mensual (COP)</mat-label
-              ><input
-                matInput
-                type="number"
-                formControlName="monthlyIncomeCop"
-              /><span matTextPrefix>$&nbsp;</span></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Fuente principal</mat-label
-              ><mat-select formControlName="sourceType"
-                ><mat-option value="employment">Empleo</mat-option
-                ><mat-option value="self_employed">Independiente</mat-option
-                ><mat-option value="pension">Pensión</mat-option
-                ><mat-option value="other">Otra</mat-option></mat-select
-              ></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Estabilidad (meses)</mat-label
-              ><input matInput type="number" formControlName="stabilityMonths"
-            /></mat-form-field>
-          </div>
-        </section>
-        <section>
-          <div class="section-heading">
-            <span>3</span>
-            <div>
-              <h2>Servicios públicos</h2>
-              <p>Comportamiento observado en una referencia de servicio.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <mat-form-field appearance="outline"
-              ><mat-label>Tipo de servicio</mat-label
-              ><mat-select formControlName="serviceType"
-                ><mat-option value="electricity">Energía</mat-option
-                ><mat-option value="water">Agua</mat-option
-                ><mat-option value="gas">Gas</mat-option
-                ><mat-option value="internet">Internet</mat-option></mat-select
-              ></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Promedio mensual (COP)</mat-label
-              ><input
-                matInput
-                type="number"
-                formControlName="utilityAmount" /></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Meses observados</mat-label
-              ><input
-                matInput
-                type="number"
-                formControlName="utilityMonths" /></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Pagos puntuales</mat-label
-              ><input matInput type="number" formControlName="onTimeCount"
-            /></mat-form-field>
-          </div>
-        </section>
-        <section>
-          <div class="section-heading">
-            <span>4</span>
-            <div>
-              <h2>Telefonía móvil</h2>
-              <p>Antigüedad y regularidad declaradas.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <mat-form-field appearance="outline"
-              ><mat-label>Modalidad</mat-label
-              ><mat-select formControlName="mobileMode"
-                ><mat-option value="postpaid">Pospago</mat-option
-                ><mat-option value="prepaid">Prepago</mat-option></mat-select
-              ></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Antigüedad (meses)</mat-label
-              ><input
-                matInput
-                type="number"
-                formControlName="tenureMonths" /></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Meses observados</mat-label
-              ><input
-                matInput
-                type="number"
-                formControlName="mobileObservedMonths" /></mat-form-field
-            ><mat-form-field appearance="outline"
-              ><mat-label>Meses regulares</mat-label
-              ><input matInput type="number" formControlName="regularMonths"
-            /></mat-form-field>
-          </div>
-        </section>
-        <section class="consent">
-          <mat-checkbox formControlName="consent"
-            >Confirmo que el solicitante otorgó consentimiento para esta
-            evaluación.</mat-checkbox
-          >
-          <p>
-            El resultado es una recomendación operativa y no una aprobación
-            crediticia definitiva.
-          </p>
-        </section>
-        <div class="form-actions">
-          <button mat-stroked-button type="button">Guardar borrador</button
-          ><button
-            mat-flat-button
-            color="primary"
-            type="submit"
-            [disabled]="loading()"
-          >
-            <span class="button-slot">
-              @if (loading()) {
-                <mat-spinner diameter="20" />
-              }
-              {{ loading() ? 'Evaluando…' : 'Calcular score' }}</span
-            >
-          </button>
-        </div>
+        <app-identity-section [form]="form" />
+        <app-contact-section [form]="form" />
+        <app-income-section [form]="form" />
+        <app-utilities-section
+          [form]="form"
+          [references]="form.controls.utilityReferences"
+          (add)="addUtilityReference()"
+        />
+        <app-mobile-section [form]="form" />
+        <app-consent-section [form]="form" />
+        <app-review-section
+          [saving]="facade.saving()"
+          [evaluating]="facade.evaluating()"
+          [busy]="facade.busy()"
+          (save)="saveDraft()"
+        />
       </form>
     </div>
   `,
@@ -250,182 +128,295 @@ import type { ApplicationInput } from './application-form.model';
       form {
         overflow: hidden;
       }
-      section {
-        padding: 28px 32px;
-        border-bottom: 1px solid var(--color-border);
-      }
-      .section-heading {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-      }
-      .section-heading > span {
-        display: grid;
-        place-items: center;
-        flex: 0 0 28px;
-        height: 28px;
-        background: var(--color-primary);
-        color: #fff;
-        border-radius: 4px;
-        font-weight: 700;
-      }
-      .section-heading p {
-        margin: 2px 0 0;
-        color: var(--color-text-muted);
-      }
-      mat-form-field {
-        width: 100%;
-      }
-      .consent {
-        background: var(--color-surface-subtle);
-      }
-      .consent p {
-        margin: 8px 0 0 34px;
-        color: var(--color-text-muted);
-        font-size: 14px;
-      }
-      .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        padding: 20px 32px;
-      }
-      .button-slot {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-width: 112px;
-      }
-      @media (max-width: 599px) {
-        section {
-          padding: 24px 16px;
-        }
-        .form-actions {
-          padding: 16px;
-          flex-direction: column-reverse;
-        }
-        .form-actions button {
-          width: 100%;
-        }
-      }
     `,
   ],
 })
 export class ApplicationFormPageComponent {
   private fb = inject(FormBuilder);
-  private api = inject(ApplicationApiService);
   private router = inject(Router);
-  first = viewChild<ElementRef<HTMLInputElement>>('firstField');
-  loading = signal(false);
+  private route = inject(ActivatedRoute);
+  private host: ElementRef<HTMLElement> = inject(ElementRef);
+  private destroyRef = inject(DestroyRef);
+  readonly facade = inject(ApplicationFacade);
+  private readonly identitySection = viewChild(IdentitySectionComponent);
+  first = () => this.identitySection()?.firstElement();
   error = signal('');
-  form = this.fb.nonNullable.group({
-    documentType: ['CC', Validators.required],
-    documentNumber: ['', [Validators.required, colombianDocument]],
-    fullName: ['', Validators.required],
-    phone: [''],
-    email: ['', Validators.email],
-    monthlyIncomeCop: [
-      null as number | null,
-      [Validators.required, positiveMoney],
-    ],
-    sourceType: ['employment', Validators.required],
-    stabilityMonths: [null as number | null, [Validators.required, months]],
-    serviceType: ['electricity', Validators.required],
-    utilityAmount: [
-      null as number | null,
-      [Validators.required, positiveMoney],
-    ],
-    utilityMonths: [
-      12,
-      [Validators.required, Validators.min(1), Validators.max(12)],
-    ],
-    onTimeCount: [
-      null as number | null,
-      [Validators.required, Validators.min(0), Validators.max(12)],
-    ],
-    mobileMode: ['postpaid', Validators.required],
-    tenureMonths: [null as number | null, [Validators.required, months]],
-    mobileObservedMonths: [
-      12,
-      [Validators.required, Validators.min(1), Validators.max(12)],
-    ],
-    regularMonths: [
-      null as number | null,
-      [Validators.required, Validators.min(0), Validators.max(12)],
-    ],
-    consent: [false, Validators.requiredTrue],
-  });
+  errorItems = signal<readonly FormErrorItem[]>([]);
+  saved = signal(false);
+  form = this.fb.nonNullable.group(
+    {
+      documentType: ['CC' as DocumentType, Validators.required],
+      documentNumber: ['', [Validators.required, colombianDocument]],
+      fullName: ['', Validators.required],
+      phone: [''],
+      email: ['', Validators.email],
+      monthlyIncomeCop: [
+        null as number | null,
+        [Validators.required, positiveMoney],
+      ],
+      incomeUnavailable: [false],
+      incomeUnavailableReason: [''],
+      sourceType: ['employment' as IncomeSource, Validators.required],
+      sourceOtherDescription: [''],
+      stabilityMonths: [null as number | null, [Validators.required, months]],
+      utilityReferences: this.fb.array([this.createUtilityReference()]),
+      utilitiesUnavailable: [false],
+      utilitiesUnavailableReason: [''],
+      mobileMode: ['postpaid' as MobileMode, Validators.required],
+      tenureMonths: [null as number | null, [Validators.required, months]],
+      mobileObservedMonths: [
+        12,
+        [Validators.required, Validators.min(1), Validators.max(12)],
+      ],
+      regularMonths: [
+        null as number | null,
+        [Validators.required, Validators.min(0), Validators.max(12)],
+      ],
+      mobileUnavailable: [false],
+      mobileUnavailableReason: [''],
+      consent: [false, Validators.requiredTrue],
+    },
+    { validators: [atLeastOneContact, otherIncomeSource] },
+  );
+
+  constructor() {
+    this.bindAvailability(
+      'incomeUnavailable',
+      'incomeUnavailableReason',
+      ['monthlyIncomeCop', 'sourceType', 'sourceOtherDescription', 'stabilityMonths'],
+    );
+    this.bindAvailability(
+      'utilitiesUnavailable',
+      'utilitiesUnavailableReason',
+      ['utilityReferences'],
+    );
+    this.bindAvailability(
+      'mobileUnavailable',
+      'mobileUnavailableReason',
+      ['mobileMode', 'tenureMonths', 'mobileObservedMonths', 'regularMonths'],
+    );
+    void this.loadCorrection();
+  }
+  addUtilityReference(): void {
+    if (this.form.controls.utilityReferences.length < 3)
+      this.form.controls.utilityReferences.push(this.createUtilityReference());
+  }
+
+  private createUtilityReference() {
+    return this.fb.nonNullable.group({
+      serviceType: ['electricity' as ServiceType, Validators.required],
+      utilityAmount: [
+        null as number | null,
+        [Validators.required, positiveMoney],
+      ],
+      utilityMonths: [
+        12,
+        [Validators.required, Validators.min(1), Validators.max(12)],
+      ],
+      onTimeCount: [
+        null as number | null,
+        [Validators.required, Validators.min(0), Validators.max(12)],
+      ],
+    });
+  }
+  async saveDraft() {
+    const value = this.form.getRawValue();
+    if (
+      this.form.controls.documentNumber.invalid ||
+      this.form.controls.fullName.invalid ||
+      (!value.phone.trim() && !value.email.trim()) ||
+      this.form.controls.email.invalid
+    ) {
+      this.form.controls.documentNumber.markAsTouched();
+      this.form.controls.fullName.markAsTouched();
+      this.form.controls.phone.markAsTouched();
+      this.form.controls.email.markAsTouched();
+      this.error.set(
+        'Complete identificación y al menos un dato de contacto para guardar.',
+      );
+      this.errorItems.set(this.collectErrors(true));
+      this.saved.set(false);
+      this.first()?.nativeElement.focus();
+      return;
+    }
+    this.error.set('');
+    this.errorItems.set([]);
+    this.saved.set(false);
+    try {
+      await this.facade.save(toApplicationDraft(value));
+      this.saved.set(true);
+    } catch (error: unknown) {
+      this.error.set(this.errorDetail(error, 'No se guardaron los cambios. Revisa tu conexión e intenta de nuevo.'));
+    }
+  }
+
   async submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set(
         'Complete los campos obligatorios y corrija los valores señalados.',
       );
-      this.first()?.nativeElement.focus();
+      const errors = this.collectErrors(false);
+      this.errorItems.set(errors);
+      this.focusControl(errors[0]?.control ?? 'documentNumber');
       return;
     }
-    this.loading.set(true);
     this.error.set('');
-    const v = this.form.getRawValue(),
-      today = new Date(),
-      start = new Date(today.getFullYear() - 1, today.getMonth(), 1);
-    const input: ApplicationInput = {
-      applicant: {
-        documentType: v.documentType,
-        documentNumber: v.documentNumber,
-        fullName: v.fullName,
-        contact: { phone: v.phone || undefined, email: v.email || undefined },
-      },
-      consent: {
-        decision: 'accepted',
-        noticeVersion: 'CONSENT-MVP-1.0.0',
-        purposeCode: 'ALTERNATIVE_CREDIT_RISK_EVALUATION',
-      },
-      alternativeData: {
-        income: {
-          availability: 'provided',
-          monthlyIncomeCop: Number(v.monthlyIncomeCop).toFixed(2),
-          sourceType: v.sourceType,
-          stabilityMonths: Number(v.stabilityMonths),
-        },
-        utilities: {
-          availability: 'provided',
-          references: [
-            {
-              serviceType: v.serviceType,
-              periodStart: start.toISOString().slice(0, 10),
-              periodEnd: today.toISOString().slice(0, 10),
-              observedMonths: v.utilityMonths,
-              totalObligations: v.utilityMonths,
-              onTimeCount: Number(v.onTimeCount),
-              lateCount: v.utilityMonths - Number(v.onTimeCount),
-              missedCount: 0,
-              averageMonthlyAmountCop: Number(v.utilityAmount).toFixed(2),
-            },
-          ],
-        },
-        mobile: {
-          availability: 'provided',
-          mode: v.mobileMode,
-          tenureMonths: Number(v.tenureMonths),
-          observedMonths: v.mobileObservedMonths,
-          regularMonths: Number(v.regularMonths),
-        },
-      },
-    };
+    this.errorItems.set([]);
+    this.saved.set(false);
+    const input = toEvaluationInput(this.form.getRawValue());
     try {
-      const result = await this.api.createAndEvaluate(input);
+      const result = (await this.facade.evaluate(input)) as {
+        evaluationId: string;
+      };
       await this.router.navigate(['/evaluations', result.evaluationId], {
         state: { result },
       });
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const failure = this.evaluationFailure(error);
+      if (failure) {
+        await this.router.navigate(['/evaluations', failure.evaluationId], {
+          state: { correlationId: failure.correlationId },
+        });
+        return;
+      }
+      this.error.set(this.errorDetail(
+        error,
+        'No fue posible evaluar la solicitud. Sus datos permanecen en pantalla.',
+      ));
+    }
+  }
+
+  private errorDetail(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object' && 'error' in error) {
+      const nested = error.error;
+      if (
+        nested &&
+        typeof nested === 'object' &&
+        'detail' in nested &&
+        typeof nested.detail === 'string'
+      )
+        return nested.detail;
+    }
+    return fallback;
+  }
+
+  private evaluationFailure(
+    error: unknown,
+  ): { evaluationId: string; correlationId: string } | null {
+    if (!error || typeof error !== 'object' || !('error' in error)) return null;
+    const body = error.error;
+    if (!body || typeof body !== 'object') return null;
+    const evaluationId = 'evaluationId' in body ? body.evaluationId : null;
+    const correlationId = 'correlationId' in body ? body.correlationId : '';
+    return typeof evaluationId === 'string'
+      ? {
+          evaluationId,
+          correlationId: typeof correlationId === 'string' ? correlationId : '',
+        }
+      : null;
+  }
+
+  focusControl(control: string): void {
+    const target = this.host.nativeElement.querySelector<HTMLElement>(
+      `#${CSS.escape(control)}`,
+    );
+    target?.focus();
+  }
+
+  private bindAvailability(
+    toggleName: string,
+    reasonName: string,
+    dataControlNames: readonly string[],
+  ): void {
+    const toggle = this.form.get(toggleName)!;
+    const reason = this.form.get(reasonName)!;
+    const apply = (unavailable: boolean) => {
+      if (unavailable) {
+        reason.enable({ emitEvent: false });
+        reason.setValidators([Validators.required, Validators.minLength(10), Validators.maxLength(240)]);
+        for (const name of dataControlNames)
+          this.form.get(name)?.disable({ emitEvent: false });
+      } else {
+        reason.clearValidators();
+        reason.disable({ emitEvent: false });
+        for (const name of dataControlNames)
+          this.form.get(name)?.enable({ emitEvent: false });
+      }
+      reason.updateValueAndValidity({ emitEvent: false });
+    };
+    apply(Boolean(toggle.value));
+    toggle.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => apply(Boolean(value)));
+  }
+
+  private collectErrors(draftOnly: boolean): readonly FormErrorItem[] {
+    const labels: Readonly<Record<string, string>> = {
+      documentNumber: 'Número de documento',
+      fullName: 'Nombre completo',
+      phone: 'Teléfono o correo electrónico',
+      email: 'Correo electrónico',
+      monthlyIncomeCop: 'Ingreso mensual',
+      incomeUnavailableReason: 'Motivo de no disponibilidad de ingresos',
+      stabilityMonths: 'Estabilidad de ingresos',
+      utilityAmount: 'Promedio mensual de servicios',
+      utilitiesUnavailableReason: 'Motivo de no disponibilidad de servicios',
+      tenureMonths: 'Antigüedad móvil',
+      regularMonths: 'Meses regulares de telefonía',
+      mobileUnavailableReason: 'Motivo de no disponibilidad de telefonía',
+      consent: 'Consentimiento',
+    };
+    const allowed = draftOnly
+      ? new Set(['documentNumber', 'fullName', 'phone', 'email'])
+      : null;
+    const invalid = Object.entries(this.form.controls)
+      .filter(([name, control]) => control.invalid && (!allowed || allowed.has(name)))
+      .flatMap(([name, control]) => {
+        if (name === 'utilityReferences' && 'controls' in control) {
+          const firstInvalid = control.controls
+            .flatMap((group: AbstractControl) =>
+              group instanceof FormGroup
+                ? Object.entries((group as FormGroup).controls)
+                : [],
+            )
+            .find(([, child]) => child.invalid);
+          return firstInvalid
+            ? [{ control: firstInvalid[0], label: labels[firstInvalid[0]] ?? 'Referencia de servicios' }]
+            : [];
+        }
+        return [{ control: name, label: labels[name] ?? name }];
+      });
+    if (this.form.hasError('contact'))
+      invalid.splice(2, 0, { control: 'phone', label: labels['phone']! });
+    return invalid.filter(
+      (item, index, all) => all.findIndex((candidate) => candidate.control === item.control) === index,
+    );
+  }
+
+  private async loadCorrection(): Promise<void> {
+    const applicationId = this.route.snapshot.queryParamMap.get('applicationId');
+    if (!applicationId) return;
+    try {
+      const loaded = await this.facade.load(applicationId);
+      const value = toApplicationFormValue(loaded.resource);
+      while (this.form.controls.utilityReferences.length > 0)
+        this.form.controls.utilityReferences.removeAt(0);
+      for (const reference of value.utilityReferences) {
+        const group = this.createUtilityReference();
+        group.patchValue(reference);
+        this.form.controls.utilityReferences.push(group);
+      }
+      const { utilityReferences, ...formValue } = value;
+      void utilityReferences;
+      this.form.patchValue(formValue);
+    } catch (error: unknown) {
       this.error.set(
-        e?.error?.detail ||
-          'No fue posible evaluar la solicitud. Sus datos permanecen en pantalla.',
+        this.errorDetail(
+          error,
+          'No fue posible cargar los datos para corrección.',
+        ),
       );
-    } finally {
-      this.loading.set(false);
     }
   }
 }

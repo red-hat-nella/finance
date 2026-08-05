@@ -12,6 +12,7 @@ import { LoadingStateComponent } from '../../shared/ui/loading-state.component';
 import { FactorListComponent } from '../evaluation-result/factor-list.component';
 import { ScoreSummaryComponent } from '../evaluation-result/score-summary.component';
 import { HistoryApiService } from '../history/history-api.service';
+import { AuthPort } from '../../core/auth/auth.port';
 
 type EvaluationDetail = components['schemas']['EvaluationDetail'];
 type GeneratedSnapshot = NonNullable<EvaluationDetail['inputSnapshot']>;
@@ -73,9 +74,18 @@ type AlternativeData = {
             <app-copy-id [value]="evaluationId" />
           </p>
         </div>
-        <a mat-flat-button color="primary" routerLink="/applications/new"
-          >Nueva solicitud</a
-        >
+        @if (canCreate) {
+          <a mat-flat-button color="primary" routerLink="/applications/new"
+            >Nueva solicitud</a
+          >
+        } @else if (canViewAudit) {
+          <a
+            mat-flat-button
+            color="primary"
+            [routerLink]="['/evaluations', evaluationId, 'audit']"
+            >Ver trazabilidad</a
+          >
+        }
       </div>
 
       @if (loading()) {
@@ -402,6 +412,7 @@ export class EvaluationDetailPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly location = inject(Location);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthPort);
   private readonly currency = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
@@ -416,6 +427,14 @@ export class EvaluationDetailPageComponent {
   readonly detail = signal<EvaluationDetailView | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+
+  get canCreate(): boolean {
+    return this.auth.hasAnyRole(['credit_analyst']);
+  }
+
+  get canViewAudit(): boolean {
+    return this.auth.hasAnyRole(['supervisor', 'auditor']);
+  }
 
   constructor() {
     this.load();

@@ -19,8 +19,10 @@ import { requestContext } from "./http/middleware/request-context.js";
 import { problemHandler } from "./http/problem-handler.js";
 import { sendProblem } from "./http/problem.js";
 import { healthRoutes } from "./http/routes/health.routes.js";
+import { applicationRoutes } from "./http/routes/applications.routes.js";
 import { evaluationRoutes } from "./http/routes/evaluations.routes.js";
 import { historyRoutes } from "./http/routes/history.routes.js";
+import { auditRoutes } from "./http/routes/audit.routes.js";
 import { mvpRoutes } from "./modules/mvp/mvp.routes.js";
 export function createApp(config: AppConfig, pool: pg.Pool): Express {
   const app = express();
@@ -36,7 +38,13 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
   );
   app.use(requestContext);
   app.use(accessLog(createLogger(config)));
-  app.use(express.json({ limit: "256kb", strict: true }));
+  app.use(
+    express.json({
+      limit: "256kb",
+      strict: true,
+      type: ["application/json", "application/merge-patch+json"],
+    }),
+  );
   app.use(healthRoutes(pool));
   const auth =
     config.nodeEnv === "development"
@@ -73,8 +81,10 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
     }),
     authorizeRead,
     enforcePublicContract,
+    applicationRoutes(pool, config),
     evaluationRoutes(pool, config),
     historyRoutes(pool, config),
+    auditRoutes(pool),
     mvpRoutes(pool, config),
   );
   app.use(problemHandler);

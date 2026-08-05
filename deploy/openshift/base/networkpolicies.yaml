@@ -5,14 +5,86 @@ spec: {podSelector: {}, policyTypes: [Ingress, Egress]}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: application-paths}
+metadata: {name: allow-cluster-dns}
 spec:
-  podSelector: {matchExpressions: [{key: app.kubernetes.io/name, operator: In, values: [frontend, ingestion, scoring, postgres]}]}
-  policyTypes: [Ingress, Egress]
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: openshift-dns}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: router-to-frontend}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  policyTypes: [Ingress]
   ingress:
     - from: [{namespaceSelector: {matchLabels: {network.openshift.io/policy-group: ingress}}}]
-    - from: [{podSelector: {matchExpressions: [{key: app.kubernetes.io/name, operator: In, values: [frontend, ingestion, scoring]}]}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: frontend-to-ingestion}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  policyTypes: [Egress]
   egress:
-    - to: [{namespaceSelector: {}}]
-      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 443}, {protocol: TCP, port: 5432}, {protocol: TCP, port: 8080}]
-
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ingestion-from-frontend}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ingestion-to-scoring-and-database}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: scoring}}}]
+      ports: [{protocol: TCP, port: 8080}]
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}}]
+      ports: [{protocol: TCP, port: 5432}]
+    - to: [{ipBlock: {cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]}}]
+      ports: [{protocol: TCP, port: 443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: scoring-from-ingestion}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: scoring}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: database-from-runtime-and-jobs}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}
+        - {podSelector: {matchLabels: {app.kubernetes.io/component: database-job}}}
+      ports: [{protocol: TCP, port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: database-jobs-to-postgres}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/component: database-job}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}}]
+      ports: [{protocol: TCP, port: 5432}]

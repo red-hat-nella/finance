@@ -1,7 +1,8 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { AppHeaderComponent } from './app-header.component';
+import { FocusOnNavigationService } from './focus-on-navigation.service';
 import { ResponsiveContainerComponent } from './responsive-container.component';
 
 @Component({
@@ -62,6 +63,8 @@ import { ResponsiveContainerComponent } from './responsive-container.component';
   ],
 })
 export class AppShellComponent {
+  private readonly focusOnNavigation = inject(FocusOnNavigationService);
+
   @ViewChild('mainContent', { read: ElementRef })
   private mainContent?: ElementRef<HTMLElement>;
 

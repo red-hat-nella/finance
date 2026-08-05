@@ -40,6 +40,13 @@ describe("HistoryRepository", () => {
     expect(countSql).toContain("org_scope_id=$1");
     expect(countSql).toContain("owner_actor_id=$3");
     expect(countSql).toContain("document_blind_index=$5");
+    expect(countSql).toContain(
+      "completed_at >= ($6::date::timestamp AT TIME ZONE 'America/Bogota')",
+    );
+    expect(countSql).toContain(
+      "completed_at < (($7::date + 1)::timestamp AT TIME ZONE 'America/Bogota')",
+    );
+    expect(countSql).not.toContain("completed_at AT TIME ZONE");
     expect(pageSql).toContain("ORDER BY completed_at DESC,id DESC");
     expect(pageSql).toContain("LIMIT $8 OFFSET $9");
     expect(query.mock.calls[1]?.[1]).toEqual([

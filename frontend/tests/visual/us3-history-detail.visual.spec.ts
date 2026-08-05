@@ -28,6 +28,15 @@ test('@visual history and detail adapt without clipping or overlap', async ({
     await expect(table).toBeHidden();
     await expect(list).toBeVisible();
   }
+  const filtersBox = await page.locator('app-history-filters form').boundingBox();
+  const firstFilterBox = await page
+    .locator('app-history-filters mat-form-field')
+    .first()
+    .boundingBox();
+  expect(filtersBox).not.toBeNull();
+  expect(firstFilterBox).not.toBeNull();
+  expect(firstFilterBox!.y - filtersBox!.y).toBeGreaterThanOrEqual(15);
+  expect(firstFilterBox!.x - filtersBox!.x).toBeGreaterThanOrEqual(15);
   await expectCentered(page.locator('main app-responsive-container'), page);
   await expectNoOverflow(page);
   await capturePage(page, testInfo, 'history');

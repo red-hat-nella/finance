@@ -32,7 +32,10 @@ async function createEvaluation(
         revisionNumber: 1,
         expectedCriteriaVersion: 'SCORING-MVP-1.0.0',
       },
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      headers: {
+        'Idempotency-Key': crypto.randomUUID(),
+        'If-Match': created.headers()['etag'],
+      },
     },
   );
   expect(evaluated.status()).toBe(201);
@@ -50,7 +53,8 @@ async function applyFilters(page: Page): Promise<Record<string, unknown>> {
   return (await requestPromise).postDataJSON() as Record<string, unknown>;
 }
 
-test.beforeEach(async ({}, testInfo) => {
+test.beforeEach(({ page }, testInfo) => {
+  void page;
   test.skip(
     testInfo.project.name !== 'desktop-1024',
     'The functional journey runs once; responsive behavior has a dedicated suite.',
@@ -77,7 +81,7 @@ test('filters history, clears state and opens the authorized detail', async ({
   expect(body).toMatchObject({ page: 1, evaluationId: created.evaluationId });
   await expect(page.getByText('Carlos M.').first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Limpiar' }).click();
+  await page.getByRole('button', { name: 'Limpiar', exact: true }).click();
   await page.getByLabel('Tipo de documento').click();
   await page.getByRole('option', { name: 'Cédula de extranjería' }).click();
   await page.getByLabel('Documento exacto').fill(created.documentNumber);
@@ -90,7 +94,7 @@ test('filters history, clears state and opens the authorized detail', async ({
   });
   expect(page.url()).not.toContain(created.documentNumber);
 
-  await page.getByRole('button', { name: 'Limpiar' }).click();
+  await page.getByRole('button', { name: 'Limpiar', exact: true }).click();
   await page.getByLabel('Desde').fill('2026-08-04');
   await page.getByLabel('Hasta').fill('2026-08-04');
   body = await applyFilters(page);
@@ -99,14 +103,14 @@ test('filters history, clears state and opens the authorized detail', async ({
     dateTo: '2026-08-04',
   });
 
-  await page.getByRole('button', { name: 'Limpiar' }).click();
+  await page.getByRole('button', { name: 'Limpiar', exact: true }).click();
   await page.getByLabel('Estado').click();
   await page.getByRole('option', { name: 'Revisión manual' }).click();
   await page.keyboard.press('Escape');
   body = await applyFilters(page);
   expect(body).toMatchObject({ states: ['revision_manual'] });
 
-  await page.getByRole('button', { name: 'Limpiar' }).click();
+  await page.getByRole('button', { name: 'Limpiar', exact: true }).click();
   await expect(page.getByLabel('ID de evaluación')).toHaveValue('');
   await expect(page.getByLabel('Documento exacto')).toHaveValue('');
   await expect(page.getByLabel('Desde')).toHaveValue('');

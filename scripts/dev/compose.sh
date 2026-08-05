@@ -14,7 +14,9 @@ case "${ENGINE}" in
   podman)
     command -v podman >/dev/null || { printf 'Podman no esta instalado.\n' >&2; exit 127; }
     declare -A PODMAN_SECRETS=(
+      [postgres_admin_password]="postgres-admin-password"
       [postgres_password]="postgres-password"
+      [postgres_retention_password]="postgres-retention-password"
       [scoring_service_token]="scoring-service-token"
       [pii_encryption_key]="pii-encryption-key"
       [pii_hmac_key]="pii-hmac-key"

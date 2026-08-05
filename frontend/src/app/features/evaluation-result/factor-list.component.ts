@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import type { components } from '../../core/api/generated';
 @Component({
   selector: 'app-factor-list',
   standalone: true,
@@ -101,7 +102,7 @@ import { Component, Input } from '@angular/core';
   ],
 })
 export class FactorListComponent {
-  @Input() factors: any[] = [];
+  @Input() factors: components['schemas']['Factor'][] = [];
   label(d: string) {
     return d === 'utility'
       ? 'Servicios públicos'

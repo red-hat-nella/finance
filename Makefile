@@ -1,4 +1,4 @@
-.PHONY: install contracts validate-spec validate-foundation validate-us1 validate-us2 validate-us3 validate-us4 validate smoke visual manifests
+.PHONY: install contracts validate-spec validate-foundation validate-us1 validate-us2 validate-us3 validate-us4 validate acceptance smoke visual manifests images push-images openshift-deploy
 
 install:
 	npm ci
@@ -30,25 +30,38 @@ validate-foundation: validate-spec contracts
 	CHROME_BIN="$${CHROME_BIN:-$${HOME}/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome}" npm --prefix frontend run test -- --watch=false --browsers=ChromeHeadless
 
 validate-us1:
-	npm --prefix services/ingestion run test
-	cd services/scoring && uv run pytest -q
-	npm --prefix frontend run test -- --watch=false
+	bash scripts/test/validate-us1.sh
 
 validate-us2: validate-us1
+	bash scripts/test/validate-us2.sh
 
 validate-us3: validate-us2
+	bash scripts/test/validate-us3.sh
 
 validate-us4: validate-us3
+	bash scripts/test/validate-us4.sh
 
-validate: validate-foundation validate-us4
-	npm --prefix frontend run build -- --configuration production
+validate:
+	bash scripts/test/validate-all.sh
+
+acceptance:
+	bash scripts/test/usability-acceptance.sh
 
 smoke:
-	bash scripts/smoke/local-health.sh
-	bash scripts/smoke/compose-e2e.sh
+	bash scripts/smoke/compose-e2e.sh "$${CONTAINER_ENGINE:-podman}"
 
 visual:
 	PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 npm --prefix frontend run test:visual
 
 manifests:
 	bash scripts/test/manifests-policy.sh
+
+images:
+	bash scripts/images/build.sh
+	bash scripts/images/scan.sh
+
+push-images:
+	bash scripts/images/build.sh --push
+
+openshift-deploy:
+	bash scripts/openshift/deploy.sh apply "$${OPENSHIFT_OVERLAY:-dev}"

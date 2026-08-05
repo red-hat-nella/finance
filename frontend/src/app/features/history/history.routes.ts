@@ -8,6 +8,11 @@ export const HISTORY_ROUTES: Routes = [
       import('./history-page.component').then((m) => m.HistoryPageComponent),
   },
   {
+    path: ':id/audit',
+    loadChildren: () =>
+      import('../audit/audit.routes').then((m) => m.AUDIT_ROUTES),
+  },
+  {
     path: ':id/details',
     loadComponent: () =>
       import('../detail/evaluation-detail-page.component').then(

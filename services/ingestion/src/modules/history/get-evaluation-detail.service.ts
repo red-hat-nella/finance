@@ -19,6 +19,7 @@ interface EvaluationRow extends pg.QueryResultRow {
   revision_number: number;
   attempt_number: number;
   status: EvaluationDetail["state"];
+  error_code: string | null;
   score: number | null;
   risk_band: EvaluationDetail["riskBand"];
   recommendation_code: string | null;
@@ -93,6 +94,9 @@ interface FactorRow extends pg.QueryResultRow {
   direction: "favorable" | "unfavorable" | "neutral";
   rule_code: string;
   contribution_points: string;
+  dimension_index: string;
+  weight: string;
+  observed_summary: string;
   explanation: string;
 }
 
@@ -121,7 +125,7 @@ export class EvaluationDetailRepository {
   ): Promise<EvaluationRow | null> {
     const restrictToOwner = actor.roles.includes("credit_analyst");
     const result = await this.pool.query<EvaluationRow>(
-      `SELECT e.id,e.public_id,e.revision_id,r.application_id,a.public_id application_public_id,r.revision_number,e.attempt_number,e.status,e.score,e.risk_band,e.recommendation_code,e.recommendation_text,e.manual_review_reasons,e.criteria_version,e.input_hash,e.started_at,e.completed_at,e.document_masked,e.applicant_display_name
+      `SELECT e.id,e.public_id,e.revision_id,r.application_id,a.public_id application_public_id,r.revision_number,e.attempt_number,e.status,e.error_code,e.score,e.risk_band,e.recommendation_code,e.recommendation_text,e.manual_review_reasons,e.criteria_version,e.input_hash,e.started_at,e.completed_at,e.document_masked,e.applicant_display_name
        FROM scoring.evaluations e
        JOIN scoring.application_revisions r ON r.id=e.revision_id
        JOIN scoring.applications a ON a.id=r.application_id
@@ -164,7 +168,8 @@ export class EvaluationDetailRepository {
 
   async getFactors(evaluationId: string): Promise<readonly FactorRow[]> {
     const result = await this.pool.query<FactorRow>(
-      `SELECT ordinal rank,dimension,direction,rule_code,contribution_points::text,explanation
+      `SELECT ordinal rank,dimension,direction,rule_code,contribution_points::text,
+              dimension_index::text,weight::text,observed_summary,explanation
        FROM scoring.evaluation_factors WHERE evaluation_id=$1 ORDER BY ordinal`,
       [evaluationId],
     );
@@ -236,6 +241,7 @@ export class GetEvaluationDetailService {
       revisionNumber: evaluation.revision_number,
       attemptNumber: evaluation.attempt_number,
       state: evaluation.status,
+      errorCode: evaluation.error_code,
       score: evaluation.score,
       scoreScale: { minimum: 300, maximum: 850 },
       riskBand: evaluation.risk_band,
@@ -418,22 +424,14 @@ function buildAlternativeData(
 }
 
 function buildFactor(row: FactorRow): components["schemas"]["Factor"] {
-  const weight = row.dimension === "utility" ? 0.4 : 0.3;
-  const contribution = Number(row.contribution_points);
-  const dimensionIndex = contribution / (5.5 * weight);
-  const labels = {
-    utility: "servicios públicos",
-    mobile: "telefonía móvil",
-    income: "ingresos",
-  } as const;
   return {
     rank: row.rank,
     dimension: row.dimension,
     direction: row.direction,
-    dimensionIndex: dimensionIndex.toFixed(3),
-    weight: weight.toFixed(3),
-    contributionPoints: contribution.toFixed(3),
-    observedSummary: `Índice de ${labels[row.dimension]}: ${dimensionIndex.toFixed(1)} de 100.`,
+    dimensionIndex: Number(row.dimension_index).toFixed(3),
+    weight: Number(row.weight).toFixed(3),
+    contributionPoints: Number(row.contribution_points).toFixed(3),
+    observedSummary: row.observed_summary,
     ruleCode: row.rule_code,
     explanation: row.explanation,
   };

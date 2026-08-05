@@ -1,6 +1,14 @@
 secrets:
+  postgres_admin_password: {file: ./.secrets/postgres-admin-password}
   postgres_password: {file: ./.secrets/postgres-password}
+  postgres_retention_password: {file: ./.secrets/postgres-retention-password}
   scoring_service_token: {file: ./.secrets/scoring-service-token}
   pii_encryption_key: {file: ./.secrets/pii-encryption-key}
   pii_hmac_key: {file: ./.secrets/pii-hmac-key}
 
+services:
+  frontend:
+    networks: [backend,edge]
+
+networks:
+  edge: {}

@@ -8,7 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   template: `
     <section role="status" aria-live="polite" [attr.aria-label]="label">
       <div class="status-line">
-        <mat-spinner diameter="28" /><span>{{ label }}</span>
+        <mat-spinner diameter="28" [attr.aria-label]="label" /><span>{{ label }}</span>
       </div>
       <div class="skeleton heading" aria-hidden="true"></div>
       <div class="skeleton body" aria-hidden="true"></div>

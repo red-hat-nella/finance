@@ -41,13 +41,13 @@ export class HistoryRepository {
     if (filters.dateFrom) {
       values.push(filters.dateFrom);
       predicates.push(
-        `(completed_at AT TIME ZONE 'America/Bogota')::date >= $${String(values.length)}::date`,
+        `completed_at >= ($${String(values.length)}::date::timestamp AT TIME ZONE 'America/Bogota')`,
       );
     }
     if (filters.dateTo) {
       values.push(filters.dateTo);
       predicates.push(
-        `(completed_at AT TIME ZONE 'America/Bogota')::date <= $${String(values.length)}::date`,
+        `completed_at < (($${String(values.length)}::date + 1)::timestamp AT TIME ZONE 'America/Bogota')`,
       );
     }
 

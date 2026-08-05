@@ -64,7 +64,7 @@ import { ResponsiveContainerComponent } from './responsive-container.component';
         height: 36px;
         border-radius: 4px;
         background: var(--color-primary);
-        color: #fff;
+        color: var(--color-on-primary);
         font-weight: 700;
       }
       .brand span:last-child {

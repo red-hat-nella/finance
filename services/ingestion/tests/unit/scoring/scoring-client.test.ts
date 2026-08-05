@@ -124,6 +124,12 @@ describe("ScoringClient", () => {
       "unknown response property",
       validResponse({ applicantName: "No permitido" }),
     ],
+    [
+      "criteria version mismatch",
+      validResponse({ criteriaVersion: "SCORING-MVP-9.9.9" }),
+    ],
+    ["input hash mismatch", validResponse({ inputHash: `sha256:${"c".repeat(64)}` })],
+    ["invalid factor count", validResponse({ factors: [] })],
   ])("rejects %s without returning partial data", async (_name, body) => {
     vi.stubGlobal(
       "fetch",
@@ -157,6 +163,17 @@ describe("ScoringClient", () => {
     await expect(client().calculate(command)).rejects.toMatchObject({
       code: "SCORING_TIMEOUT",
       status: 504,
+    });
+  });
+
+  it.each([
+    ["connection failure", () => Promise.reject(new TypeError("connection refused"))],
+    ["upstream 5xx", () => Promise.resolve(new Response(null, { status: 503 }))],
+  ])("maps %s to an observable 502 error", async (_name, response) => {
+    vi.stubGlobal("fetch", vi.fn(response));
+    await expect(client().calculate(command)).rejects.toMatchObject({
+      code: "SCORING_UNAVAILABLE",
+      status: 502,
     });
   });
 });

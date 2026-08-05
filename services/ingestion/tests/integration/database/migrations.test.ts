@@ -13,6 +13,9 @@ describe("migration ownership", () => {
       "0005_audit_idempotency_retention.sql",
       "0006_seed_scoring_mvp_1_0_0.sql",
       "0007_integrity_triggers.sql",
+      "0008_partial_application_drafts.sql",
+      "0009_explainable_factor_fields.sql",
+      "0010_sync_criteria_checksum.sql",
     ]);
     const runtime = await readFile("src/server.ts", "utf8");
     expect(runtime).not.toMatch(/CREATE\s+(TABLE|SCHEMA)|ALTER\s+TABLE/i);

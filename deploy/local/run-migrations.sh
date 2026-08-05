@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PGPASSWORD="$(cat /run/secrets/postgres_password)"
+export PGPASSWORD="$(cat "${DATABASE_PASSWORD_FILE:-/run/secrets/postgres_admin_password}")"
 psql -v ON_ERROR_STOP=1 -c 'CREATE TABLE IF NOT EXISTS public.schema_migrations(filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())' >/dev/null
 for migration in /migrations/*.sql; do
   filename="$(basename "$migration")"
@@ -10,3 +10,10 @@ for migration in /migrations/*.sql; do
     psql -v ON_ERROR_STOP=1 -c "INSERT INTO public.schema_migrations(filename) VALUES('$filename')" >/dev/null
   fi
 done
+
+if [[ -n "${RETENTION_DATABASE_PASSWORD_FILE:-}" ]]; then
+  retention_password="$(cat "$RETENTION_DATABASE_PASSWORD_FILE")"
+  psql -v ON_ERROR_STOP=1 --set=retention_password="$retention_password" <<'SQL' >/dev/null
+ALTER ROLE scoring_retention LOGIN PASSWORD :'retention_password';
+SQL
+fi

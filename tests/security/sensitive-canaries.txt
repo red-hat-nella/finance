@@ -1,0 +1,5 @@
+Bearer canary
+CANARY-SECRET
+9999999.00
+retention-canary-
+document-canary

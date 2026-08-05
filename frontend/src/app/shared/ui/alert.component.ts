@@ -29,10 +29,14 @@ import { Component, Input } from '@angular/core';
         border-color: var(--color-warning);
         background: var(--color-warning-bg);
       }
+      .success {
+        border-color: var(--color-success);
+        background: var(--color-success-bg);
+      }
     `,
   ],
 })
 export class AlertComponent {
   @Input() title = 'Información';
-  @Input() type: 'info' | 'error' | 'warning' = 'info';
+  @Input() type: 'info' | 'error' | 'warning' | 'success' = 'info';
 }

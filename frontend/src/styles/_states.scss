@@ -1,0 +1,16 @@
+.evaluation-progress {
+  display: block;
+  min-height: 220px;
+}
+
+.evaluation-progress[aria-busy='true'] {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evaluation-progress,
+  .evaluation-progress * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

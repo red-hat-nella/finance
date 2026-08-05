@@ -11,6 +11,10 @@ textarea:focus-visible,
   outline: 3px solid var(--color-focus) !important;
   outline-offset: 2px !important;
 }
+main[tabindex='-1']:focus-visible,
+h1[tabindex='-1']:focus-visible {
+  outline: none !important;
+}
 .skip-link {
   position: fixed;
   left: 16px;

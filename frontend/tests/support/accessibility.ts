@@ -20,7 +20,12 @@ export async function expectVisibleFocus(locator: Locator): Promise<void> {
 }
 
 export async function useTwoHundredPercentZoom(page: Page): Promise<void> {
-  await page.addStyleTag({ content: 'html { zoom: 2; }' });
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('A viewport is required to verify zoom reflow.');
+  await page.setViewportSize({
+    width: Math.floor(viewport.width / 2),
+    height: viewport.height,
+  });
 }
 
 export async function useReducedMotion(page: Page): Promise<void> {

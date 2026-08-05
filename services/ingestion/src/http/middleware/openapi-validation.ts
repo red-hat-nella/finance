@@ -38,10 +38,10 @@ export function enforcePublicContract(
     });
     return;
   }
-  if (
-    ["POST", "PATCH", "PUT"].includes(req.method) &&
-    !req.is("application/json")
-  ) {
+  const acceptedBody =
+    req.is("application/json") ||
+    (req.method === "PATCH" && req.is("application/merge-patch+json"));
+  if (["POST", "PATCH", "PUT"].includes(req.method) && !acceptedBody) {
     sendProblem(req, res, {
       status: 415,
       title: "Formato no soportado",

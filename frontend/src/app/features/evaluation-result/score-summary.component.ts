@@ -1,5 +1,11 @@
 import { Component, Input } from '@angular/core';
+import type { components } from '../../core/api/generated';
 import { RiskBadgeComponent } from '../../shared/ui/risk-badge.component';
+
+type ScoreSummary = Pick<
+  components['schemas']['EvaluationDetail'],
+  'score' | 'riskBand' | 'recommendation'
+>;
 @Component({
   selector: 'app-score-summary',
   standalone: true,
@@ -85,7 +91,7 @@ import { RiskBadgeComponent } from '../../shared/ui/risk-badge.component';
   ],
 })
 export class ScoreSummaryComponent {
-  @Input({ required: true }) result: any;
+  @Input({ required: true }) result!: ScoreSummary;
   get tone() {
     return this.result.riskBand === 'riesgo_bajo'
       ? 'low'

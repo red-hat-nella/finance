@@ -7,6 +7,9 @@ interface ProblemOptions {
   detail: string;
   retryable?: boolean;
   errors?: readonly unknown[];
+  existingApplicationId?: string;
+  evaluationId?: string;
+  evaluationStatus?: "error";
 }
 
 export function sendProblem(
@@ -27,5 +30,12 @@ export function sendProblem(
       correlationId: req.requestId,
       retryable: options.retryable ?? false,
       errors: options.errors ?? [],
+      ...(options.existingApplicationId
+        ? { existingApplicationId: options.existingApplicationId }
+        : {}),
+      ...(options.evaluationId ? { evaluationId: options.evaluationId } : {}),
+      ...(options.evaluationStatus
+        ? { evaluationStatus: options.evaluationStatus }
+        : {}),
     });
 }

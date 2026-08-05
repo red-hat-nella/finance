@@ -7,8 +7,11 @@ ENV_FILE="${ROOT_DIR}/deploy/local/.env.secrets"
 mkdir -p "${SECRET_DIR}"
 chmod 700 "${SECRET_DIR}"
 umask 077
+find "${SECRET_DIR}" -maxdepth 1 -type f -exec chmod 0600 {} +
 
+openssl rand -base64 32 > "${SECRET_DIR}/postgres-admin-password"
 openssl rand -base64 32 > "${SECRET_DIR}/postgres-password"
+openssl rand -base64 32 > "${SECRET_DIR}/postgres-retention-password"
 openssl rand 32 > "${SECRET_DIR}/pii-encryption-key"
 openssl rand 32 > "${SECRET_DIR}/pii-hmac-key"
 openssl rand -base64 48 > "${SECRET_DIR}/scoring-service-token"
@@ -26,9 +29,13 @@ NODE
 
 POSTGRES_PASSWORD="$(<"${SECRET_DIR}/postgres-password")"
 ANALYST_TOKEN="$(cd "${ROOT_DIR}" && ./scripts/dev/issue-token.sh credit_analyst)"
-SUPERVISOR_TOKEN="$(cd "${ROOT_DIR}" && ./scripts/dev/issue-token.sh credit_supervisor)"
+SUPERVISOR_TOKEN="$(cd "${ROOT_DIR}" && ./scripts/dev/issue-token.sh supervisor)"
 printf '%s' "${ANALYST_TOKEN}" > "${SECRET_DIR}/dev-analyst-token"
 printf '%s' "${SUPERVISOR_TOKEN}" > "${SECRET_DIR}/dev-supervisor-token"
+# Docker Compose implements file-backed secrets as bind mounts and preserves the
+# host mode. The containing directory remains owner-only; read-only files let the
+# arbitrary non-root UIDs used by the containers consume those mounts.
+chmod 0444 "${SECRET_DIR}"/*
 cat > "${ENV_FILE}" <<'EOF'
 # Los valores sensibles viven como archivos bajo .secrets y no se expanden en Compose.
 LOCAL_SECRETS_READY=true

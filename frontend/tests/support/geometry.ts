@@ -13,8 +13,17 @@ export async function expectNoOverflow(page: Page): Promise<void> {
       .filter((element) => element.scrollWidth > element.clientWidth + 2)
       .map((element) => element.textContent?.trim())
       .filter(Boolean),
+    overflowing: [...document.querySelectorAll<HTMLElement>('body *')]
+      .filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 2)
+      .slice(0, 12)
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        className: element.className,
+        right: Math.round(element.getBoundingClientRect().right),
+        text: element.textContent?.trim().slice(0, 80),
+      })),
   }));
-  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.documentWidth, JSON.stringify(geometry.overflowing)).toBeLessThanOrEqual(geometry.viewportWidth);
   expect(geometry.clipped).toEqual([]);
 }
 
@@ -24,9 +33,16 @@ export async function expectTouchTargets(
 ): Promise<void> {
   for (const element of await locator.all()) {
     const box = await element.boundingBox();
-    expect(box, 'interactive element must have a bounding box').not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(minimum);
-    expect(box!.width).toBeGreaterThanOrEqual(minimum);
+    const identity = await element.evaluate((node) => ({
+      tag: node.tagName.toLowerCase(),
+      text: node.textContent?.trim().slice(0, 80),
+      ariaLabel: node.getAttribute('aria-label'),
+      className: node.getAttribute('class'),
+    }));
+    const message = `interactive target ${JSON.stringify(identity)}`;
+    expect(box, `${message} must have a bounding box`).not.toBeNull();
+    expect(box!.height, `${message} height`).toBeGreaterThanOrEqual(minimum);
+    expect(box!.width, `${message} width`).toBeGreaterThanOrEqual(minimum);
   }
 }
 

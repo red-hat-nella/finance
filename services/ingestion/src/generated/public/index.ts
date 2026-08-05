@@ -124,6 +124,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/evaluations/{evaluationId}/retry': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reintenta una evaluación fallida sobre su snapshot inmutable
+     * @description Solo el analista propietario puede reintentar una evaluación en estado error. El reintento crea un intento nuevo vinculado mediante retryOfEvaluationId, conserva exactamente el inputHash y los datos normalizados del intento fallido y nunca sobrescribe evidencia previa. Requiere una clave de idempotencia nueva por intención de reintento.
+     */
+    post: operations['retryEvaluation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/evaluations/{evaluationId}': {
     parameters: {
       query?: never;
@@ -374,8 +394,12 @@ export interface components {
       applicationId: components['schemas']['Uuid'];
       revisionNumber: number;
       attemptNumber: number;
+      /** @description Evaluación fallida que originó este intento; null para el primero. */
+      retryOfEvaluationId?: components['schemas']['Uuid'] | null;
       /** @enum {string} */
       state: 'evaluando' | 'evaluada' | 'revision_manual' | 'error';
+      /** @description Código operativo seguro; solo se presenta cuando state es error. */
+      errorCode?: string | null;
       score: number | null;
       scoreScale: components['schemas']['ScoreScale'];
       riskBand: components['schemas']['RiskBand'];
@@ -437,8 +461,7 @@ export interface components {
       outcome: 'success' | 'blocked' | 'denied' | 'error';
       actorDisplay: string;
       /** @enum {string} */
-      actorRole:
-        'credit_analyst' | 'credit_supervisor' | 'credit_auditor' | 'system';
+      actorRole: 'credit_analyst' | 'supervisor' | 'auditor' | 'system';
       /** Format: date-time */
       occurredAt: string;
       safeMetadata: {
@@ -1127,6 +1150,118 @@ export interface operations {
       400: components['responses']['BadRequest'];
       401: components['responses']['Unauthorized'];
       422: components['responses']['SearchValidationFailed'];
+    };
+  };
+  retryEvaluation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+        'X-Request-Id'?: components['parameters']['RequestId'];
+        /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
+        'Idempotency-Key': components['parameters']['IdempotencyKey'];
+      };
+      path: {
+        evaluationId: components['parameters']['EvaluationId'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nuevo intento concluido o replay idempotente */
+      201: {
+        headers: {
+          Location?: string;
+          'X-Request-Id': components['headers']['RequestId'];
+          'Idempotency-Replayed': components['headers']['IdempotencyReplayed'];
+          [name: string]: unknown;
+        };
+        content: {
+          /**
+           * @example {
+           *       "evaluationId": "20000000-0000-4000-8000-000000000011",
+           *       "applicationId": "10000000-0000-4000-8000-000000000001",
+           *       "revisionNumber": 1,
+           *       "attemptNumber": 2,
+           *       "retryOfEvaluationId": "20000000-0000-4000-8000-000000000010",
+           *       "state": "evaluada",
+           *       "score": 835,
+           *       "scoreScale": {
+           *         "minimum": 300,
+           *         "maximum": 850
+           *       },
+           *       "riskBand": "riesgo_bajo",
+           *       "recommendation": {
+           *         "code": "CONTINUE_HUMAN_ANALYSIS",
+           *         "text": "Continuar con el análisis crediticio humano"
+           *       },
+           *       "factors": [
+           *         {
+           *           "rank": 1,
+           *           "dimension": "utility",
+           *           "direction": "favorable",
+           *           "dimensionIndex": "100.000",
+           *           "weight": "0.400",
+           *           "contributionPoints": "220.000",
+           *           "observedSummary": "12 de 12 obligaciones pagadas puntualmente",
+           *           "ruleCode": "UTILITY_ON_TIME_100",
+           *           "explanation": "La puntualidad completa en servicios aporta favorablemente al score."
+           *         },
+           *         {
+           *           "rank": 2,
+           *           "dimension": "income",
+           *           "direction": "favorable",
+           *           "dimensionIndex": "100.000",
+           *           "weight": "0.300",
+           *           "contributionPoints": "165.000",
+           *           "observedSummary": "48 meses de estabilidad y cobertura de 16.0",
+           *           "ruleCode": "INCOME_STABILITY_36_PLUS_COVERAGE_8_PLUS",
+           *           "explanation": "La estabilidad y cobertura declaradas aportan favorablemente al score."
+           *         },
+           *         {
+           *           "rank": 3,
+           *           "dimension": "mobile",
+           *           "direction": "favorable",
+           *           "dimensionIndex": "91.000",
+           *           "weight": "0.300",
+           *           "contributionPoints": "150.150",
+           *           "observedSummary": "48 meses de antigüedad y 12 de 12 meses regulares",
+           *           "ruleCode": "MOBILE_TENURE_36_59_REGULARITY_100",
+           *           "explanation": "La relación móvil prolongada y regular aporta favorablemente al score."
+           *         }
+           *       ],
+           *       "manualReviewReasons": [],
+           *       "criteriaVersion": "SCORING-MVP-1.0.0",
+           *       "inputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+           *       "startedAt": "2026-08-04T14:07:00Z",
+           *       "completedAt": "2026-08-04T14:07:00.312Z",
+           *       "timezone": "America/Bogota",
+           *       "applicantSummary": {
+           *         "documentMasked": "CC •••••1032",
+           *         "displayName": "María P."
+           *       },
+           *       "relatedAttempts": [
+           *         {
+           *           "evaluationId": "20000000-0000-4000-8000-000000000010",
+           *           "attemptNumber": 1,
+           *           "state": "error",
+           *           "startedAt": "2026-08-04T14:06:00Z",
+           *           "completedAt": "2026-08-04T14:06:00.751Z",
+           *           "errorCode": "SCORING_TIMEOUT"
+           *         }
+           *       ]
+           *     }
+           */
+          'application/json': components['schemas']['EvaluationDetail'];
+        };
+      };
+      400: components['responses']['BadRequest'];
+      401: components['responses']['Unauthorized'];
+      404: components['responses']['EvaluationNotFound'];
+      409: components['responses']['Conflict'];
+      429: components['responses']['TooManyRequests'];
+      502: components['responses']['ScoringInvalidResponse'];
+      504: components['responses']['ScoringTimeout'];
     };
   };
   getEvaluation: {

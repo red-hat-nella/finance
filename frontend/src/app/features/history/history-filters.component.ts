@@ -129,7 +129,7 @@ function trimmedPattern(pattern: RegExp) {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: var(--space-4);
         align-items: start;
-        padding: var(--space-5);
+        padding: var(--space-6);
         margin-bottom: var(--space-6);
       }
       .filter-actions {

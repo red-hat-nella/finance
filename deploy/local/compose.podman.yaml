@@ -1,7 +1,13 @@
 secrets:
+  postgres_admin_password:
+    external: true
+    name: postgres_admin_password
   postgres_password:
     external: true
     name: postgres_password
+  postgres_retention_password:
+    external: true
+    name: postgres_retention_password
   scoring_service_token:
     external: true
     name: scoring_service_token

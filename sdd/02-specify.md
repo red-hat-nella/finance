@@ -103,3 +103,67 @@ Nivel de detalle requerido:
 - Incluye una lista de eventos o acciones auditables, aunque el detalle tecnico se defina luego en el plan.
 - Incluye datos de ejemplo realistas para al menos 3 perfiles: riesgo bajo, riesgo medio y riesgo alto.
 - No dejes secciones con frases pendientes como "definir despues", salvo en los maximo 3 marcadores [NEEDS CLARIFICATION] permitidos.
+
+---
+
+Bloque variable para entrega automatizada en Red Hat OpenShift
+
+Este bloque se agrega al final para que la parte funcional del producto permanezca independiente de la plataforma. La especificacion debe registrar QUE resultado operativo necesita el cliente y los datos variables que condicionan alcance, seguridad o experiencia. No debe decidir aqui la implementacion de pipelines o manifiestos.
+
+Informacion que se debe solicitar al cliente
+
+1. Identidad y propiedad del proyecto
+   - Nombre visible y slug tecnico deseado para la aplicacion.
+   - Equipo propietario, contacto operativo y contacto que aprueba promociones.
+   - URL del repositorio de aplicacion y proveedor Git.
+   - Ambientes requeridos: desarrollo, staging y/o produccion.
+   - Repositorio GitOps existente o autorizacion para que la plataforma cree uno.
+
+2. Destino OpenShift, sin secretos
+   - URL de la API del cluster o nombre del contexto autorizado.
+   - Namespace existente por ambiente o patron de nombres permitido.
+   - Dominio base o hostname requerido para Routes.
+   - Registro de imagenes permitido: registro interno, Red Hat Quay u otro compatible.
+   - Region, zona, requisitos de residencia de datos y restricciones de red relevantes.
+   - Operadores o servicios ya disponibles: OpenShift Pipelines, Pipelines as Code, OpenShift GitOps, Developer Hub, Quay, gestor de secretos y observabilidad.
+
+3. Acceso y entrega segura de credenciales
+   - Metodo autorizado: ServiceAccount, workload identity, GitHub App, kubeconfig dedicado o token temporal.
+   - Identidad responsable de crear namespaces, RBAC, webhooks y aplicaciones GitOps durante el bootstrap.
+   - Nombre o referencia del secreto en el gestor de CI/CD; nunca solicitar el valor del token en este documento.
+   - Duracion y mecanismo de renovacion de credenciales temporales.
+   - Confirmacion de si el cliente permite acceso MCP de solo lectura para descubrir el cluster.
+   - Confirmacion separada para cualquier escritura asistida por un agente en desarrollo. La ausencia de esta confirmacion implica solo lectura.
+
+4. Exposicion, datos y operacion
+   - Componentes que deben ser publicos y componentes que deben permanecer internos.
+   - Requisitos de TLS, certificado, DNS, SSO/OIDC y origenes CORS permitidos.
+   - Persistencia requerida, capacidad inicial, clase de almacenamiento aprobada, backups y retencion.
+   - Perfil esperado de uso, disponibilidad, ventana de mantenimiento, recursos o cuotas conocidas.
+   - Health checks funcionales y smoke test que demuestren que el despliegue quedo utilizable.
+   - Requisitos de logging, metricas, alertas y datos que deben excluirse de observabilidad.
+
+5. Promocion y gobierno
+   - Ambientes que pueden recibir despliegue automatico despues de merge.
+   - Ambientes que requieren aprobacion manual y rol autorizado para aprobar.
+   - Politicas obligatorias: firmas, SBOM, escaneo de imagen, severidad maxima admitida y excepciones.
+   - Estrategia de rollback y objetivo de recuperacion esperado.
+   - Politica de eliminacion de ambientes efimeros y conservacion de evidencia de despliegue.
+
+Reglas para generar la especificacion
+
+- La especificacion debe incluir requisitos testables de desplegabilidad: un commit aceptado produce una imagen trazable, un cambio declarativo, un rollout saludable y evidencia consultable.
+- Debe definir por ambiente quien puede promover, que controles bloquean y que comportamiento observa el usuario cuando un despliegue falla.
+- Debe distinguir bootstrap inicial de operacion continua. El bootstrap puede requerir participacion de plataforma; los despliegues ordinarios no deben requerir intervencion manual del cliente.
+- Si el cliente desconoce un valor descubrible, debe registrarse como `DESCUBRIBLE_CON_MCP` y resolverse en el plan usando acceso de solo lectura.
+- Si faltan URL de cluster, namespace o capacidad para crearlo, repositorio GitOps, metodo de autenticacion o propietario de aprobaciones, usar un unico marcador `[NEEDS CLARIFICATION: PLATFORM_PROFILE]` con la lista concreta de datos faltantes. No inventar estos valores.
+- La especificacion nunca debe almacenar la credencial. Para una conexion externa puede mencionar nombres como `OPENSHIFT_API_URL`, `OPENSHIFT_TOKEN` o `KUBECONFIG`, pero el valor se entrega por el gestor seguro acordado.
+
+Criterios de aceptacion de plataforma que deben quedar en la especificacion
+
+- Un cambio aprobado debe poder llegar al ambiente objetivo sin ejecutar pasos manuales no documentados.
+- Cada despliegue debe identificar commit, digest de imagen, ambiente, fecha, resultado y enlace o referencia a la ejecucion.
+- Un fallo de build, prueba, politica, autenticacion, reconciliacion o health check debe detener la promocion y producir un mensaje accionable sin exponer secretos.
+- Una credencial expirada debe producir un estado de autenticacion identificable y un procedimiento de renovacion, sin degradar a una credencial de mayor privilegio.
+- El cliente debe poder recuperar la ultima version saludable mediante el procedimiento de rollback acordado.
+- La ausencia del MCP no debe impedir CI/CD si el perfil de plataforma y las credenciales de pipeline ya estan configurados.

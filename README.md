@@ -182,7 +182,11 @@ make manifests
 El quickstart detallado de API, fixtures, fallos y verificacion visual esta en
 [`specs/001-alternative-credit-scoring/quickstart.md`](specs/001-alternative-credit-scoring/quickstart.md).
 
-## Desplegar la demo en OpenShift
+## Despliegue imperativo de la demo en OpenShift
+
+Este flujo existe para validación local, bootstrap o demostraciones aisladas. NO es el
+mecanismo de despliegue ordinario exigido por la constitución: los ambientes compartidos
+DEBEN reconciliarse desde GitOps con imágenes inmutables referenciadas por digest.
 
 ### 1. Preparar proyecto y registro
 
@@ -257,7 +261,7 @@ oc -n alternative-scoring-dev rollout status deploy/ingestion
 oc -n alternative-scoring-dev rollout status deploy/scoring
 ```
 
-El overlay `production` elimina PostgreSQL de demo y usa el `ExternalName`
+El overlay `production` expresa estado deseado no confirmado: elimina PostgreSQL de demo y usa el `ExternalName`
 `postgresql.production.internal`. Antes de usarlo se deben cambiar el registry, host
 de base de datos, TLS, OIDC, namespaces, recursos y egress de acuerdo con el entorno
 real.
@@ -298,7 +302,9 @@ deseado y reconcilia el cluster. Quay puede almacenar y escanear las imagenes.
 | Pull request | Evidencia del gate, SBOM, digests y cambio de manifiestos | Pipelines as Code decide si puede integrarse |
 | Promocion | PR al repositorio GitOps con digests inmutables | Argo CD despliega; produccion conserva aprobacion humana si la politica lo exige |
 
-Un perfil de plataforma reutilizable para adjuntar a `speckit.plan` puede ser:
+Un perfil de plataforma reutilizable para adjuntar a `speckit.plan` puede ser. Todos
+sus productos opcionales son capacidades por descubrir o configurar, no instalaciones
+que puedan asumirse:
 
 ```yaml
 platform: openshift
@@ -310,7 +316,7 @@ delivery:
   imageReference: digest
 environments: [dev, staging, production]
 publicExposure: frontend-route-only
-database: postgresql
+dataService: derived-from-application-and-confirmed-capabilities
 secrets: external-secret-reference-only
 requiredArtifacts:
   - Dockerfile-per-service
@@ -333,11 +339,20 @@ Tasks/Pipelines Tekton, el repositorio GitOps, RBAC, secretos, registry, observa
 y politicas de promocion. Asi cada proyecto hereda despliegue y cumplimiento sin que
 el cliente tenga que aprender los detalles del cluster.
 
-Este repositorio ya contiene imagenes, gates, Kustomize y despliegue manual seguro.
-Para automatizacion empresarial aun se deben incorporar, desde la plantilla de
-plataforma, `.tekton/`, el `Application` de Argo CD, un repositorio GitOps separado y
-`catalog-info.yaml`. Esos artefactos son responsabilidad del golden path, no del
-prompt de negocio de cada cliente.
+### Estado de plataforma documentado
+
+| Estado | Recursos / capacidades |
+|---|---|
+| Deseado y versionado | Imágenes, gates, manifiestos Kustomize, configuración, referencias de secretos y overlays OpenShift |
+| Confirmado en cluster | Ninguno en esta documentación; no se realizó inspección autorizada del cluster |
+| Pendiente de validación | Versión OpenShift, operadores, StorageClasses, registry, ingress, gestor de secretos, dominios, namespaces y políticas corporativas |
+| Pendiente de implementación | `.tekton/`, publicación por digest, actualización GitOps, `Application` de Argo CD o equivalente, promoción, reconciliación y rollback automatizados |
+
+El flujo imperativo anterior no demuestra reconciliación GitOps ni constituye una
+entrega productiva terminada. La automatización empresarial debe incorporar los
+artefactos pendientes desde el golden path aprobado. Ningún documento debe afirmar que
+un recurso existe hasta confirmarlo mediante inspección autorizada de solo lectura que
+no consulte Secrets.
 
 Documentacion oficial:
 

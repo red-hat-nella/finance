@@ -5,7 +5,7 @@ Contexto del producto:
 - Usa datos declarados o cargados por el solicitante sobre servicios publicos, telefonia movil e ingresos estimados.
 - El sistema produce un score, una banda de riesgo, factores explicables y una recomendacion operativa.
 - El sistema ayuda a analistas de credito, pero no reemplaza la decision humana ni debe presentarse como aprobacion crediticia automatica definitiva.
-- Debe poder ejecutarse localmente con contenedores y desplegarse en Red Hat OpenShift.
+- Debe poder ejecutarse localmente con contenedores y cumplir el bloque permanente de automatizacion OpenShift ubicado al final de este documento.
 
 Define la constitucion con estos principios no negociables:
 
@@ -33,10 +33,11 @@ Define la constitucion con estos principios no negociables:
    - Cada evaluacion debe ser trazable por identificador, fecha, estado y version de criterios usada.
 
 5. Operabilidad en plataforma Red Hat
-   - El proyecto debe ser contenedorizable y desplegable en OpenShift.
+   - El proyecto debe ser contenedorizable y desplegable de forma reproducible.
    - La configuracion debe provenir de variables de entorno, ConfigMaps o Secrets, no de valores hardcodeados.
    - Cada servicio debe exponer health checks, readiness cuando aplique y comportamiento claro ante fallos.
    - El entorno local debe representar razonablemente el despliegue productivo.
+   - Las obligaciones comunes de automatizacion, seguridad y GitOps se rigen por el bloque permanente ubicado al final de este documento.
 
 6. UI/UX profesional y verificable
    - La interfaz debe seguir un estilo visual definido y documentado antes de implementar pantallas.
@@ -59,3 +60,43 @@ Gobernanza requerida:
   - PATCH para aclaraciones o correcciones editoriales.
 
 Al finalizar, no dejes placeholders sin explicar y actualiza cualquier template dependiente que quede inconsistente con la constitucion.
+
+---
+
+Bloque permanente para entrega automatizada en Red Hat OpenShift
+
+Este bloque es constante y reutilizable en cualquier proyecto. No debe contener nombres de cliente, URLs de cluster, namespaces, tokens ni valores propios de un ambiente. Los datos variables se recopilan durante `specify` y se convierten en decisiones y artefactos durante `plan`.
+
+7. Despliegue declarativo y automatizado
+   - El estado deseado de la aplicacion y de cada ambiente debe quedar versionado en Git mediante manifiestos declarativos, overlays o artefactos equivalentes.
+   - El despliegue continuo debe ser realizado por un reconciliador GitOps. El modelo puede generar y actualizar configuracion, pero no debe convertir cambios manuales e irrepetibles sobre el cluster en la fuente de verdad.
+   - Las imagenes promovidas deben ser inmutables e identificables por digest. No se permite promover a produccion usando etiquetas mutables como `latest`.
+   - Todo ambiente debe tener estrategia de rollback documentada y verificable mediante reversion del cambio Git o promocion de un digest anterior conocido.
+   - Desarrollo puede desplegarse automaticamente despues de superar controles. Staging y produccion deben respetar las aprobaciones definidas por el propietario de la plataforma.
+
+8. Identidades, credenciales y minimo privilegio
+   - Nunca se debe pedir al cliente que pegue tokens, kubeconfigs, contrasenas, llaves privadas o pull secrets dentro de prompts, `spec.md`, `plan.md`, tareas, commits, logs o manifiestos de ejemplo.
+   - Al cliente se le debe solicitar el metodo de autenticacion y la referencia al gestor seguro donde la credencial sera entregada. El valor real se inyecta solamente en tiempo de ejecucion.
+   - Deben existir identidades separadas para descubrimiento, integracion continua y despliegue. Ninguna identidad automatizada debe usar `cluster-admin` salvo un bootstrap excepcional, temporal, auditado y aprobado.
+   - La identidad de despliegue debe estar limitada a los namespaces y recursos necesarios. Antes de aplicar cambios se deben verificar permisos efectivos con controles equivalentes a `oc auth can-i`.
+   - Los secretos de aplicacion deben proceder de un Secret, un operador de secretos o un gestor aprobado por la plataforma. Git solo puede contener nombres de claves, referencias y ejemplos sin valores reales.
+   - Los tokens personales son aceptables unicamente para una prueba manual temporal. La automatizacion estable debe usar ServiceAccount, workload identity, GitHub App u otra identidad no humana administrable y revocable.
+
+9. Controles obligatorios antes y despues del despliegue
+   - Antes de construir: especificacion, plan, contratos y tareas deben estar consistentes y sin aclaraciones criticas pendientes.
+   - Antes de publicar una imagen: deben aprobar pruebas, validacion de contratos, lint, analisis de dependencias, busqueda de secretos y escaneo de imagen.
+   - Antes de reconciliar un ambiente: deben aprobar renderizado, validacion de esquema, politicas de seguridad, diff del cambio y verificacion de que no se incluyen secretos reales.
+   - Despues del despliegue: deben verificarse rollout, health/readiness, Route o punto de acceso, logs sin datos sensibles y al menos un smoke test funcional.
+   - La evidencia debe asociar commit, ejecucion de pipeline, digest de imagen, ambiente, usuario o identidad, fecha y resultado del despliegue.
+
+10. Uso seguro de agentes y del OpenShift MCP Server
+   - El OpenShift MCP Server puede utilizarse para descubrir capacidades, inspeccionar recursos, validar permisos, observar rollouts y diagnosticar fallos del cluster; no sustituye los contratos declarativos ni la fuente de verdad GitOps.
+   - El acceso inicial del MCP debe ser de solo lectura, restringido a un unico contexto y sin acceso a recursos `Secret`. Las operaciones destructivas deben permanecer deshabilitadas.
+   - Un agente no debe recibir una credencial permanente de administrador ni aplicar cambios de produccion fuera del flujo GitOps aprobado.
+   - Cuando se habilite escritura para un entorno de desarrollo, debe usarse una identidad dedicada, namespace-scoped, auditable y revocable. Staging y produccion deben seguir el flujo de promocion y aprobacion.
+   - La informacion normativa debe contrastarse con documentacion oficial de Red Hat. El MCP se usa para consultar el estado real del cluster, no como sustituto de la documentacion del producto.
+
+11. Regla de preparacion de plataforma
+   - La implementacion puede iniciar sin credenciales reales, usando ejemplos y validaciones estaticas.
+   - La automatizacion de despliegue no puede declararse terminada hasta que exista un perfil de plataforma completo, una identidad valida inyectada por canal seguro, permisos comprobados, repositorio GitOps accesible y criterios de promocion definidos.
+   - Si falta un dato de plataforma bloqueante, el modelo debe marcar `ERROR: PLATFORM_INPUT_REQUIRED`, enumerar solamente los campos faltantes y continuar con todo artefacto que pueda validarse sin acceso al cluster.

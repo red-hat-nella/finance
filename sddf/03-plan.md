@@ -183,4 +183,59 @@ Si no existe conexion al cluster, genera la documentacion con los valores declar
 
 Si queda un bloqueo externo, emite una unica seccion `PLATFORM_INPUT_REQUIRED` al final. Incluye solo el dato indispensable, por que no puede inferirse o descubrirse, quien debe proporcionarlo y como referenciarlo de forma segura. No detengas ningun trabajo que pueda completarse sin ese dato.
 
-'oc' ya esta instalado y autenticado, crea un proyecto y comienza a trabajar en el. Usa el MCP 'kubernetes-mcp-server@latest'. 
+'oc' ya esta instalado y autenticado, `usa un proyecto nuevo a menos que se especifique el proyecto a usar` y comienza a trabajar en el. Usa el MCP 'kubernetes-mcp-server@latest'.
+
+10. Fallback ejecutable para un cluster de prueba sin GitOps
+
+Este fallback solo se activa con autorizacion explicita y debe producir una
+`DIRECT_APPLY_DEVIATION`. No reemplaza la arquitectura GitOps del plan.
+
+1. Descubrir por lectura version, namespace autorizado, cuotas, SCC, registro,
+   StorageClass, dominio de Route, DNS y APIs opcionales. Distinguir Argo Workflows,
+   Argo CD Agent y el controlador Argo CD: ninguno sustituye automaticamente a otro.
+2. Construir una sola vez, publicar en el registro del proyecto y obtener el digest
+   observado del ImageStreamTag. Actualizar el overlay con `image@sha256`, nunca con
+   `latest` ni solo con el tag del commit.
+3. Crear secretos aleatorios directamente en el cluster mediante archivos temporales
+   con permisos `0600`; no imprimir valores y destruir los temporales inmediatamente.
+   Los secretos de texto consumidos tanto como variables como archivos no deben tener
+   salto de linea final, porque los runtimes pueden normalizarlos de forma distinta.
+4. Crear un overlay de prueba explicito para autenticacion local ya soportada y para
+   eliminar Jobs/CronJobs cuyas dependencias externas se hayan pospuesto. No parchear
+   la base ni produccion para acomodar la demo.
+5. Renderizar y ejecutar validacion local, politicas y `oc apply --dry-run=server`.
+6. Aplicar primero identidades, configuracion, Services, NetworkPolicies, PVC y datos.
+   Esperar el StatefulSet antes de crear el Job de migracion.
+7. Ejecutar una migracion finita y bloquear los Deployments hasta que el Job termine.
+   En una base autogestionada de prueba puede usarse el administrador del contenedor;
+   esta excepcion no se replica en una base administrada ni en produccion.
+8. Aplicar Deployments y Route, esperar todos los rollouts y ejecutar un smoke test
+   que cree, procese y consulte una entidad sintetica.
+9. Registrar URL, replicas, digests, PVC, migracion, smoke y todas las capacidades
+   pendientes. Importar el overlay en GitOps cuando la API `Application` exista.
+
+Lecciones de diagnostico que deben automatizarse
+
+- En OpenShift DNS puede terminar en el puerto backend `5353` despues de DNAT. Una
+  NetworkPolicy que permite solo TCP/UDP `53` puede producir `ENOTFOUND` aun cuando
+  `/etc/resolv.conf` apunte correctamente al Service DNS. Validar una resolucion real
+  desde un pod con las mismas labels y permitir solamente `53/5353`.
+- No usar un chart `Argo CD Agent` como sustituto del operador GitOps. El Agent exige
+  un Principal, CA y credenciales mTLS preexistentes; sin ellos debe quedar pendiente.
+- El pipeline debe recibir el commit como parametro; un workspace empaquetado sin
+  `.git` no puede depender de `.git/HEAD` para generar evidencia.
+- No vincular dos PVC RWO a una misma TaskRun sin comprobar co-scheduling y zona. En
+  pipelines pequeños, conservar fuente y evidencia en un unico workspace persistente
+  evita afinidades imposibles.
+- Los Tasks deben usar herramientas realmente presentes en la imagen. Si el toolbox
+  contiene `oc` pero no `kubectl`, usar `oc kustomize` o un shim probado.
+- Un fallo de migracion no habilita el rollout. Antes de recrear almacenamiento,
+  verificar que no haya datos; si existen o no puede demostrarse, preservar el PVC y
+  rotar roles desde una sesion local autorizada.
+
+Evidencia obligatoria de la desviacion
+
+- `DECLARED`: manifiestos renderizados y overlay de prueba versionado.
+- `OBSERVED`: version del cluster, recursos Ready, Route, digests y smoke PASS.
+- `PENDING_VALIDATION`: GitOps/reconciliacion, OIDC corporativo, backup/restauracion,
+  promocion y rollback dinamico.

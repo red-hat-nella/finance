@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-postgres
+  labels: {app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations:
+    platform.finance2/state: PENDING_VALIDATION
+spec:
+  type: ExternalName
+  externalName: postgresql.production.invalid

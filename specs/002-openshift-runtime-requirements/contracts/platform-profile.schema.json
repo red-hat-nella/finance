@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finance2.example.test/contracts/platform-profile-v1.schema.json",
+  "title": "Platform Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "environment", "cluster", "capabilities", "inputs", "sources"],
+  "properties": {
+    "schemaVersion": { "const": "platform.finance2/v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "environment": { "enum": ["dev", "production"] },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextRef", "namespace", "status"],
+      "properties": {
+        "contextRef": { "type": "string", "minLength": 1 },
+        "namespace": { "type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" },
+        "version": { "type": ["string", "null"] },
+        "status": { "$ref": "#/$defs/state" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "available", "status", "sourceRef"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "available": { "type": ["boolean", "null"] },
+          "version": { "type": ["string", "null"] },
+          "status": { "$ref": "#/$defs/state" },
+          "sourceRef": { "type": "string", "minLength": 1 },
+          "alternative": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "classification", "evidence", "requiredFor", "status"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "classification": { "enum": ["INFERRED", "DEFAULTED", "DISCOVERED", "EXTERNAL_REQUIRED", "SECRET_REFERENCE"] },
+          "value": { "type": ["string", "null"] },
+          "reference": { "type": ["string", "null"] },
+          "evidence": { "type": "string", "minLength": 1 },
+          "requiredFor": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["static", "bootstrap", "promotion", "runtime", "verification"] }
+          },
+          "status": { "$ref": "#/$defs/state" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "classification": { "const": "SECRET_REFERENCE" } } },
+            "then": { "required": ["reference"], "properties": { "value": { "type": "null" } } }
+          }
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/source" }
+    }
+  },
+  "$defs": {
+    "state": { "enum": ["DECLARED", "OBSERVED", "PENDING_VALIDATION"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "sourceType", "sourceRef", "capturedAt"],
+      "properties": {
+        "state": { "$ref": "#/$defs/state" },
+        "sourceType": { "enum": ["repository", "render", "mcp", "cli", "pipeline", "gitops", "test"] },
+        "sourceRef": { "type": "string", "minLength": 1 },
+        "capturedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
+

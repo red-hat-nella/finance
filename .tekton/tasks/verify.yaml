@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-verify}
+spec:
+  params: [{name: toolbox-image, type: string}, {name: environment, type: string}, {name: namespace, type: string}]
+  workspaces: [{name: source}, {name: artifacts}]
+  results: [{name: verification-evidence, type: string}]
+  steps:
+    - name: runtime-verification
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        scripts/platform/verify --environment "$(params.environment)" --namespace "$(params.namespace)" --evidence-dir "$(workspaces.artifacts.path)/evidence/$(params.environment)" --include-smoke
+        printf '%s' "$(workspaces.artifacts.path)/evidence/$(params.environment)" > "$(results.verification-evidence.path)"
+      computeResources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

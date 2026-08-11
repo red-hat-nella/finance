@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  labels: {app.kubernetes.io/name: ingestion, app.kubernetes.io/component: api, app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app.kubernetes.io/name: ingestion}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: ingestion, app.kubernetes.io/component: api, app.kubernetes.io/part-of: alternative-credit-scoring}
+    spec:
+      serviceAccountName: ingestion
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: ingestion
+          image: quay.io/finance2/ingestion@sha256:2222222222222222222222222222222222222222222222222222222222222222
+          envFrom: [{configMapRef: {name: ingestion-config}}]
+          env:
+            - {name: DATABASE_PASSWORD_FILE, value: /run/secrets/ingestion/database-password}
+            - {name: PII_ENCRYPTION_KEY_FILE, value: /run/secrets/ingestion/encryption-key-v1}
+            - {name: PII_HMAC_KEY_FILE, value: /run/secrets/ingestion/hmac-key-v1}
+            - {name: PII_KEY_VERSION, value: "1"}
+            - {name: PII_KEY_VERSIONS, value: "1"}
+            - {name: PII_KEYRING_DIR, value: /run/secrets/ingestion}
+            - {name: SCORING_SERVICE_TOKEN_FILE, value: /run/secrets/ingestion/scoring-service-token}
+          ports: [{name: http, containerPort: 8080, protocol: TCP}]
+          livenessProbe: {httpGet: {path: /health/live, port: http}, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3}
+          readinessProbe: {httpGet: {path: /health/ready, port: http}, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 3}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+          volumeMounts:
+            - {name: runtime-secrets, mountPath: /run/secrets/ingestion, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: runtime-secrets
+          projected:
+            defaultMode: 256
+            sources:
+              - secret:
+                  name: ingestion-runtime
+                  items:
+                    - {key: database-password, path: database-password}
+                    - {key: scoring-service-token, path: scoring-service-token}
+              - secret:
+                  name: pii-keyring
+                  items:
+                    - {key: encryption-key-v1, path: encryption-key-v1}
+                    - {key: hmac-key-v1, path: hmac-key-v1}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

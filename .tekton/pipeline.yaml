@@ -1,0 +1,120 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata: {name: finance2-release}
+spec:
+  params:
+    - {name: delivery-mode, type: string, default: release}
+    - {name: commit-sha, type: string}
+    - {name: environment, type: string, default: dev}
+    - {name: namespace, type: string, default: rh-ee-mpolo-dev}
+    - {name: registry, type: string}
+    - {name: gitops-repository, type: string}
+    - {name: toolbox-image, type: string}
+    - {name: security-image, type: string}
+    - {name: builder-image, type: string}
+    - {name: publisher-image, type: string}
+  workspaces: [{name: source}, {name: artifacts}, {name: gitops}, {name: git-auth}]
+  results:
+    - {name: frontend-digest, value: $(tasks.publish.results.frontend-digest)}
+    - {name: ingestion-digest, value: $(tasks.publish.results.ingestion-digest)}
+    - {name: scoring-digest, value: $(tasks.publish.results.scoring-digest)}
+    - {name: evidence-ref, value: $(finally.report.results.evidence-ref)}
+    - {name: operations-doc-ref, value: $(finally.report.results.operations-doc-ref)}
+  tasks:
+    - name: inspect
+      taskRef: {name: finance2-inspect}
+      params: [{name: toolbox-image, value: $(params.toolbox-image)}]
+      workspaces: [{name: source, workspace: source}]
+    - name: test
+      runAfter: [inspect]
+      taskRef: {name: finance2-test}
+      params:
+        - {name: toolbox-image, value: $(params.toolbox-image)}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}]
+    - name: secure
+      runAfter: [test]
+      taskRef: {name: finance2-secure}
+      params: [{name: security-image, value: $(params.security-image)}]
+      workspaces: [{name: source, workspace: source}]
+    - name: build-frontend
+      runAfter: [secure]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-build-image}
+      params:
+        - {name: builder-image, value: $(params.builder-image)}
+        - {name: component, value: frontend}
+        - {name: context, value: frontend}
+        - {name: dockerfile, value: frontend/Dockerfile}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
+    - name: build-ingestion
+      runAfter: [build-frontend]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-build-image}
+      params:
+        - {name: builder-image, value: $(params.builder-image)}
+        - {name: component, value: ingestion}
+        - {name: context, value: .}
+        - {name: dockerfile, value: services/ingestion/Dockerfile}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
+    - name: build-scoring
+      runAfter: [build-ingestion]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-build-image}
+      params:
+        - {name: builder-image, value: $(params.builder-image)}
+        - {name: component, value: scoring}
+        - {name: context, value: services/scoring}
+        - {name: dockerfile, value: services/scoring/Dockerfile}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
+    - name: render
+      runAfter: [build-scoring]
+      taskRef: {name: finance2-render}
+      params: [{name: toolbox-image, value: $(params.toolbox-image)}, {name: cluster-version, value: "4.21.21"}]
+      workspaces: [{name: source, workspace: source}]
+    - name: publish
+      runAfter: [render]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-publish}
+      params:
+        - {name: publisher-image, value: $(params.publisher-image)}
+        - {name: registry, value: $(params.registry)}
+        - {name: commit-sha, value: $(params.commit-sha)}
+        - {name: frontend-archive, value: $(tasks.build-frontend.results.image-archive)}
+        - {name: ingestion-archive, value: $(tasks.build-ingestion.results.image-archive)}
+        - {name: scoring-archive, value: $(tasks.build-scoring.results.image-archive)}
+      workspaces: [{name: artifacts, workspace: artifacts}]
+    - name: promote
+      runAfter: [publish]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-propose-gitops}
+      params:
+        - {name: toolbox-image, value: $(params.toolbox-image)}
+        - {name: repository, value: $(params.gitops-repository)}
+        - {name: environment, value: $(params.environment)}
+        - {name: registry, value: $(params.registry)}
+        - {name: commit-sha, value: $(params.commit-sha)}
+        - {name: frontend-digest, value: $(tasks.publish.results.frontend-digest)}
+        - {name: ingestion-digest, value: $(tasks.publish.results.ingestion-digest)}
+        - {name: scoring-digest, value: $(tasks.publish.results.scoring-digest)}
+      workspaces: [{name: gitops, workspace: gitops}, {name: git-auth, workspace: git-auth}]
+    - name: verify
+      runAfter: [promote]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-verify}
+      params:
+        - {name: toolbox-image, value: $(params.toolbox-image)}
+        - {name: environment, value: $(params.environment)}
+        - {name: namespace, value: $(params.namespace)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
+  finally:
+    - name: report
+      taskRef: {name: finance2-report}
+      params:
+        - {name: toolbox-image, value: $(params.toolbox-image)}
+        - {name: environment, value: $(params.environment)}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}]

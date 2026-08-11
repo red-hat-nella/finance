@@ -12,6 +12,7 @@ import {
   encryptField,
   type CipherField,
 } from "../../infrastructure/crypto/field-crypto.js";
+import { encryptionKeyForVersion } from "../../config/pii-keyring.js";
 
 type Queryable = Pick<pg.Pool | pg.PoolClient, "query">;
 
@@ -45,6 +46,7 @@ interface ApplicationRow {
   revision_id: string;
   revision_number: number;
   lock_version: number;
+  pii_key_version?: number | null;
   document_type: ApplicationDraftInput["applicant"]["documentType"];
   document_ciphertext: Buffer;
   document_nonce: Buffer;
@@ -595,7 +597,7 @@ export class ApplicationRepository {
   private applicationSelect(): string {
     return `SELECT
       a.id,a.public_id,a.owner_actor_id,a.current_status,a.created_at,a.updated_at,a.draft_expires_at,
-      r.id revision_id,r.revision_number,r.lock_version,
+      r.id revision_id,r.revision_number,r.lock_version,s.pii_key_version,
       s.document_type,s.document_ciphertext,s.document_nonce,s.document_tag,s.document_masked,
       s.full_name_ciphertext,s.full_name_nonce,s.full_name_tag,s.display_name,
       s.phone_ciphertext,s.phone_nonce,s.phone_tag,s.email_ciphertext,s.email_nonce,s.email_tag,
@@ -615,7 +617,10 @@ export class ApplicationRepository {
   }
 
   private mapRow(row: ApplicationRow, utilityRows: readonly UtilityRow[]): StoredApplication {
-    const key = this.config.pii.encryptionKey;
+    const key = encryptionKeyForVersion(
+      this.config.pii,
+      row.pii_key_version ?? this.config.pii.keyVersion,
+    );
     const decrypt = (ciphertext: Buffer, nonce: Buffer, tag: Buffer) =>
       decryptField({ ciphertext, nonce, tag }, key);
     const contact: { phone?: string; email?: string } = {};

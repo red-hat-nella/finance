@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: ingestion}
+spec:
+  template:
+    spec:
+      containers:
+        - name: ingestion
+          volumeMounts:
+            - {name: database-tls, mountPath: /run/secrets/database-tls, readOnly: true}
+      volumes:
+        - name: database-tls
+          projected:
+            defaultMode: 256
+            sources:
+              - secret: {name: database-tls, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: migrations}
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrations
+          volumeMounts:
+            - {name: database-tls, mountPath: /run/secrets/database-tls, readOnly: true}
+      volumes:
+        - name: database-tls
+          projected:
+            defaultMode: 256
+            sources:
+              - secret: {name: database-tls, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: retention}
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: retention
+              volumeMounts:
+                - {name: database-tls, mountPath: /run/secrets/database-tls, readOnly: true}
+          volumes:
+            - name: database-tls
+              projected:
+                defaultMode: 256
+                sources:
+                  - secret: {name: database-tls, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: reconciler}
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: reconciler
+              volumeMounts:
+                - {name: database-tls, mountPath: /run/secrets/database-tls, readOnly: true}
+          volumes:
+            - name: database-tls
+              projected:
+                defaultMode: 256
+                sources:
+                  - secret: {name: database-tls, items: [{key: ca.crt, path: ca.crt}]}

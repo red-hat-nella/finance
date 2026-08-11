@@ -67,10 +67,14 @@ case "$ACTION" in
     ;;
   apply)
     oc get namespace "$namespace" >/dev/null 2>&1 || oc create namespace "$namespace"
-    oc -n "$namespace" get secret scoring-secrets >/dev/null 2>&1 || {
-      echo "Falta scoring-secrets en $namespace. Ejecute scripts/openshift/create-secrets.sh $namespace." >&2
+    missing_secrets=()
+    for secret_ref in database-runtime ingestion-runtime scoring-runtime database-migrator pii-keyring; do
+      oc -n "$namespace" get secret "$secret_ref" >/dev/null 2>&1 || missing_secrets+=("$secret_ref")
+    done
+    if ((${#missing_secrets[@]})); then
+      echo "Faltan referencias de Secret en $namespace: ${missing_secrets[*]}. Créelas por el canal seguro antes de desplegar." >&2
       exit 3
-    }
+    fi
 
     filter_documents bootstrap | oc apply -f -
     if oc -n "$namespace" get statefulset/postgres >/dev/null 2>&1; then

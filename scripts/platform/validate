@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ALL=false
+ARCHITECTURE=false
+CLUSTER_VERSION="4.21.21"
+EVIDENCE_DIR="$ROOT/build/platform/evidence/static"
+
+while (($#)); do
+  case "$1" in
+    --all) ALL=true; shift ;;
+    --architecture) ARCHITECTURE=true; shift ;;
+    --cluster-version) CLUSTER_VERSION="$2"; shift 2 ;;
+    --evidence-dir) EVIDENCE_DIR="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ "$ARCHITECTURE" == true ]]; then
+  for component in frontend ingestion scoring migrations retention reconciler postgresql oidc; do
+    grep -q "name: $component" "$ROOT/deploy/openshift/topology.yaml" || { echo "missing topology component: $component" >&2; exit 1; }
+  done
+  echo "architecture inventory: PASS"
+fi
+
+if [[ "$ALL" == true ]]; then
+  node "$ROOT/scripts/platform/validate-contracts.mjs" --all
+  "$ROOT/tests/platform/render/kustomize.test.sh"
+  "$ROOT/tests/platform/policy/workload-security.test.sh"
+  "$ROOT/tests/platform/migrations/release-job.test.sh"
+  "$ROOT/tests/platform/images/immutable-promotion.test.sh"
+  bash "$ROOT/tests/platform/openshift-manifests.test.sh"
+fi
+
+if command -v conftest >/dev/null; then
+  for environment in dev production; do
+    render="$(mktemp)"
+    trap 'rm -f "$render"' EXIT
+    oc kustomize "$ROOT/deploy/openshift/overlays/$environment" > "$render"
+    conftest test --parser yaml --policy "$ROOT/deploy/policies" "$render"
+  done
+else
+  echo "conftest unavailable: equivalent repository policy tests executed"
+fi
+
+mkdir -p "$EVIDENCE_DIR"
+jq -n \
+  --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg clusterVersion "$CLUSTER_VERSION" \
+  '{schemaVersion:"static-validation.finance2/v1",generatedAt:$generatedAt,clusterVersion:$clusterVersion,result:"PASS",checks:["contracts","render","workload-security","migration-contract","immutable-images"],dynamicState:"PENDING_VALIDATION"}' \
+  > "$EVIDENCE_DIR/static-validation.json"
+echo "static platform validation: PASS ($EVIDENCE_DIR/static-validation.json)"

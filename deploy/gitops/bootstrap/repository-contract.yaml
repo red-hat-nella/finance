@@ -1,0 +1,16 @@
+apiVersion: platform.finance2/v1
+kind: GitOpsRepositoryContract
+metadata:
+  name: alternative-credit-scoring
+spec:
+  state: PENDING_VALIDATION
+  applicationRepository: https://github.com/red-hat-nella/finance.git
+  desiredStateRepository: PLATFORM_INPUT_REQUIRED
+  protectedBranch: PLATFORM_INPUT_REQUIRED
+  proposerIdentityReference: gitops-repository
+  reconciler: PLATFORM_INPUT_REQUIRED
+  rules:
+    - images are changed only by digest
+    - the proposer opens a branch and pull request
+    - the reconciler never reads application Secret values
+    - production requires recorded organizational approval

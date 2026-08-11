@@ -51,3 +51,16 @@ specs/001-alternative-credit-scoring/validation-evidence/screenshots/
 .specify/
 specs/
 web-app.md
+
+# Versioned SDD governance and active OpenShift feature
+!.specify/
+.specify/*
+!.specify/memory/
+.specify/memory/*
+!.specify/memory/constitution.md
+!.specify/templates/
+!.specify/templates/*.md
+!specs/
+specs/*
+!specs/002-openshift-runtime-requirements/
+!specs/002-openshift-runtime-requirements/**

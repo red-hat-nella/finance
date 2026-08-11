@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "platform.finance2/v1",
+  "generatedAt": "2026-08-09T00:00:00Z",
+  "environment": "dev",
+  "cluster": {
+    "contextRef": "rh-ee-mpolo-dev/api-rm1-0a51-p1-openshiftapps-com:6443/rh-ee-mpolo",
+    "namespace": "rh-ee-mpolo-dev",
+    "version": "4.21.21",
+    "status": "OBSERVED"
+  },
+  "capabilities": [
+    {"name":"openshift-pipelines","available":true,"version":"1.23.1","status":"OBSERVED","sourceRef":"tekton.dev/v1 discovery","alternative":null},
+    {"name":"openshift-gitops","available":false,"version":null,"status":"OBSERVED","sourceRef":"argoproj.io API discovery","alternative":"approved GitOps reconciler"},
+    {"name":"external-secrets","available":false,"version":null,"status":"OBSERVED","sourceRef":"external-secrets.io API discovery","alternative":"secure out-of-band Secret provisioning"},
+    {"name":"storage-gp3","available":true,"version":null,"status":"OBSERVED","sourceRef":"StorageClass/gp3","alternative":null}
+  ],
+  "inputs": [
+    {"name":"namespace","classification":"DISCOVERED","value":"rh-ee-mpolo-dev","reference":null,"evidence":"user authorization and current context","requiredFor":["bootstrap","runtime","verification"],"status":"OBSERVED"},
+    {"name":"storageClass","classification":"DISCOVERED","value":"gp3","reference":null,"evidence":"StorageClass discovery","requiredFor":["runtime","verification"],"status":"OBSERVED"},
+    {"name":"gitopsRepository","classification":"EXTERNAL_REQUIRED","value":null,"reference":null,"evidence":"GitOps API absent in observed cluster","requiredFor":["promotion","runtime","verification"],"status":"PENDING_VALIDATION"},
+    {"name":"runtimeSecrets","classification":"SECRET_REFERENCE","value":null,"reference":"contracts/secret-references.md","evidence":"least privilege contract","requiredFor":["bootstrap","runtime"],"status":"DECLARED"}
+  ],
+  "sources": [
+    {"state":"OBSERVED","sourceType":"mcp","sourceRef":"kubernetes-mcp-server@latest read-only discovery","capturedAt":"2026-08-09T00:00:00Z"},
+    {"state":"DECLARED","sourceType":"repository","sourceRef":"specs/002-openshift-runtime-requirements/research.md","capturedAt":"2026-08-09T00:00:00Z"}
+  ]
+}

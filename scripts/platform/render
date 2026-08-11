@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENVIRONMENT=""
+ALL=false
+OUTPUT_DIR="$ROOT/build/rendered"
+
+while (($#)); do
+  case "$1" in
+    --all) ALL=true; shift ;;
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ "$ALL" != true && "$ENVIRONMENT" != dev && "$ENVIRONMENT" != production ]]; then
+  echo "use --all or --environment dev|production" >&2
+  exit 2
+fi
+command -v oc >/dev/null || { echo "oc is required for Kustomize rendering" >&2; exit 1; }
+mkdir -p "$OUTPUT_DIR"
+
+environments=()
+if [[ "$ALL" == true ]]; then environments=(dev production); else environments=("$ENVIRONMENT"); fi
+for environment in "${environments[@]}"; do
+  target="$OUTPUT_DIR/$environment"
+  mkdir -p "$target"
+  oc kustomize "$ROOT/deploy/openshift/overlays/$environment" > "$target/manifests.yaml"
+  cp "$ROOT/deploy/openshift/overlays/$environment/platform-profile.json" "$target/platform-profile.json"
+  [[ -s "$target/manifests.yaml" ]] || { echo "$environment rendered empty" >&2; exit 1; }
+  echo "rendered $environment: $target/manifests.yaml"
+done

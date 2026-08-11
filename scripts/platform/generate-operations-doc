@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { parseAllDocuments, parseDocument } from "yaml";
+
+const args = new Map();
+for (let i = 2; i < process.argv.length; i += 1) {
+  if (process.argv[i] === "--offline") { args.set("--offline", true); continue; }
+  args.set(process.argv[i], process.argv[++i]);
+}
+const renderRoot = path.resolve(args.get("--render-root") ?? "build/rendered");
+const output = path.resolve(args.get("--output") ?? "docs/operations/openshift-deployment.md");
+const profilePath = path.resolve(args.get("--cluster-profile") ?? "build/platform/dev-profile.json");
+const bootstrapEvidencePath = path.resolve(args.get("--bootstrap-evidence") ?? "build/platform/evidence/bootstrap-observed.json");
+const root = path.resolve(import.meta.dirname, "../..");
+const environments = ["dev", "production"];
+const allowedStatus = new Set(["DECLARED", "OBSERVED", "PENDING_VALIDATION"]);
+
+function readResources(environment) {
+  const file = path.join(renderRoot, environment, "manifests.yaml");
+  if (!fs.existsSync(file)) throw new Error(`missing rendered manifests: ${file}`);
+  const source = fs.readFileSync(file, "utf8");
+  return { file, source, resources: parseAllDocuments(source).map((d) => d.toJSON()).filter(Boolean) };
+}
+function safe(value) {
+  return String(value ?? "—").replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+function row(values) { return `| ${values.map(safe).join(" | ")} |`; }
+function image(container) { return container?.image ?? "PENDING_VALIDATION"; }
+function serviceFor(resources, name) {
+  return resources.find((r) => r.kind === "Service" && r.metadata?.name === name)?.metadata?.name ?? "—";
+}
+function secretNames(podSpec) {
+  const names = [];
+  for (const volume of podSpec?.volumes ?? []) {
+    if (volume.secret?.secretName) names.push(volume.secret.secretName);
+    for (const source of volume.projected?.sources ?? []) if (source.secret?.name) names.push(source.secret.name);
+  }
+  return [...new Set(names)].sort();
+}
+function configNames(podSpec) {
+  const names = [];
+  for (const container of podSpec?.containers ?? []) {
+    for (const item of container.envFrom ?? []) if (item.configMapRef?.name) names.push(item.configMapRef.name);
+    for (const item of container.env ?? []) if (item.valueFrom?.configMapKeyRef?.name) names.push(item.valueFrom.configMapKeyRef.name);
+  }
+  return [...new Set(names)].sort();
+}
+function workloadPodSpec(resource) {
+  return resource.kind === "CronJob" ? resource.spec?.jobTemplate?.spec?.template?.spec : resource.spec?.template?.spec;
+}
+function desired(resource) {
+  if (["Deployment", "StatefulSet"].includes(resource.kind)) return resource.spec?.replicas ?? 1;
+  return resource.kind === "CronJob" ? resource.spec?.schedule : "por release";
+}
+function getGitCommit() {
+  if (/^[0-9a-f]{40}$/.test(process.env.GIT_COMMIT_SHA ?? "")) return process.env.GIT_COMMIT_SHA;
+  const head = fs.readFileSync(path.join(root, ".git/HEAD"), "utf8").trim();
+  if (!head.startsWith("ref: ")) return head;
+  const ref = head.slice(5), loose = path.join(root, ".git", ref);
+  if (fs.existsSync(loose)) return fs.readFileSync(loose, "utf8").trim();
+  const match = fs.readFileSync(path.join(root, ".git/packed-refs"), "utf8").split(/\r?\n/).find((line) => line.endsWith(` ${ref}`));
+  return match?.split(" ")[0] ?? "PENDING_VALIDATION";
+}
+
+const rendered = Object.fromEntries(environments.map((env) => [env, readResources(env)]));
+let observedProfile = null;
+if (!args.has("--offline") && fs.existsSync(profilePath)) observedProfile = JSON.parse(fs.readFileSync(profilePath, "utf8"));
+let bootstrapEvidence = null;
+if (!args.has("--offline") && fs.existsSync(bootstrapEvidencePath)) bootstrapEvidence = JSON.parse(fs.readFileSync(bootstrapEvidencePath, "utf8"));
+const productionProfile = JSON.parse(fs.readFileSync(path.join(root, "deploy/openshift/overlays/production/platform-profile.json"), "utf8"));
+const repositoryContract = parseDocument(fs.readFileSync(path.join(root, "deploy/gitops/bootstrap/repository-contract.yaml"), "utf8")).toJSON();
+const generatedAt = new Date().toISOString();
+const sourceHash = crypto.createHash("sha256").update(environments.map((e) => rendered[e].source).join("\n---\n")).digest("hex");
+const commit = getGitCommit();
+const lines = [
+  "# Despliegue OpenShift — Alternative Credit Scoring",
+  "",
+  `> Generado: ${generatedAt}  `,
+  `> Commit de aplicación: \`${commit}\` — DECLARED  `,
+  `> Huella de manifiestos: \`sha256:${sourceHash}\` — DECLARED  `,
+  "> Estados permitidos: `DECLARED`, `OBSERVED`, `PENDING_VALIDATION`.",
+  "",
+  "## Resumen y arquitectura",
+  "",
+  "La única entrada pública es el frontend. Ingestion, scoring, PostgreSQL y los Jobs permanecen internos — DECLARED.",
+  "",
+  "```mermaid",
+  "flowchart LR",
+  "  Browser -->|HTTPS| Route[Route frontend]",
+  "  Route --> Frontend",
+  "  Frontend -->|HTTP /api| Ingestion",
+  "  Ingestion -->|HTTP + token| Scoring",
+  "  Ingestion -->|TLS| DB[(PostgreSQL)]",
+  "  Jobs[Migration / retention / reconciler] -->|TLS| DB",
+  "  Ingestion -->|HTTPS JWKS| OIDC[IdP externo]",
+  "```",
+  "",
+  "## Contextos y ambientes",
+  "",
+  "| Ambiente | Namespace | Clúster/contexto | Versión | GitOps | Estado | Fuente |",
+  "|---|---|---|---|---|---|---|",
+];
+const devCluster = observedProfile?.cluster;
+lines.push(row(["dev", devCluster?.namespace ?? "rh-ee-mpolo-dev", devCluster?.contextRef ?? "PENDING_VALIDATION", devCluster?.version ?? "PENDING_VALIDATION", "Application alternative-credit-scoring-dev", devCluster ? "OBSERVED" : "PENDING_VALIDATION", devCluster ? "scripts/platform/discover (sin Secrets)" : "render offline"]));
+lines.push(row(["production", productionProfile.cluster.namespace, productionProfile.cluster.contextRef, productionProfile.cluster.version ?? "PENDING_VALIDATION", "Application declarada; reconciliador pendiente", "PENDING_VALIDATION", "perfil productivo declarativo"]));
+lines.push("", "### Capacidades relevantes", "", "| Capacidad | Disponible | Alternativa | Estado |", "|---|---|---|---|");
+if (observedProfile?.capabilities?.length) {
+  for (const capability of observedProfile.capabilities) lines.push(row([capability.name, capability.available, capability.alternative ?? "—", capability.status]));
+} else {
+  lines.push(row(["Pipelines/GitOps/gestor de secretos", "sin observación offline", "interfaces declarativas conservadas", "PENDING_VALIDATION"]));
+}
+lines.push("", "### Bootstrap namespace-scoped", "", "| Recurso | Estado | Fuente |", "|---|---|---|");
+if (bootstrapEvidence?.resources?.length) {
+  for (const resource of bootstrapEvidence.resources) lines.push(row([resource, "OBSERVED", "consulta allowlist posterior a bootstrap"]));
+} else {
+  lines.push(row(["identidades, RBAC y recursos Tekton", "PENDING_VALIDATION", "sin evidencia de bootstrap"]));
+}
+
+for (const env of environments) {
+  const resources = rendered[env].resources;
+  const workloads = resources.filter((r) => ["Deployment", "StatefulSet", "Job", "CronJob"].includes(r.kind));
+  lines.push("", `## Inventario ${env}`, "", "| Tipo/nombre | Réplicas o ciclo | Imagen por digest | ServiceAccount | Service | ConfigMaps | Secret references | Estado |", "|---|---|---|---|---|---|---|---|");
+  for (const resource of workloads) {
+    const pod = workloadPodSpec(resource), container = pod?.containers?.[0];
+    lines.push(row([`${resource.kind}/${resource.metadata.name}`, desired(resource), image(container), pod?.serviceAccountName ?? "default", serviceFor(resources, resource.metadata.name), configNames(pod).join(", ") || "—", secretNames(pod).join(", ") || "—", "DECLARED"]));
+  }
+  const route = resources.find((r) => r.kind === "Route");
+  lines.push("", `### Endpoints ${env}`, "", "| Acceso | URL/host | TLS | Estado |", "|---|---|---|---|");
+  lines.push(row(["Público: frontend", route?.spec?.host ? `https://${route.spec.host}` : "asignado por ingress tras reconciliación", route?.spec?.tls?.termination ?? "edge", route?.spec?.host ? "DECLARED" : "PENDING_VALIDATION"]));
+  lines.push(row(["Interno: ingestion", "http://ingestion:8080", "aislado por NetworkPolicy", "DECLARED"]));
+  lines.push(row(["Interno: scoring", "http://scoring:8080", "aislado por NetworkPolicy", "DECLARED"]));
+
+  const pvcs = resources.filter((r) => r.kind === "PersistentVolumeClaim");
+  lines.push("", `### Datos y almacenamiento ${env}`, "", "| Recurso | Capacidad/clase | Política de recuperación | Estado |", "|---|---|---|---|");
+  if (pvcs.length === 0) lines.push(row(["PostgreSQL externo", "sin PVC de aplicación", "backup/PITR y restore aislado del proveedor", "PENDING_VALIDATION"]));
+  for (const pvc of pvcs) lines.push(row([`PVC/${pvc.metadata.name}`, `${pvc.spec?.resources?.requests?.storage ?? "—"} / ${pvc.spec?.storageClassName ?? "PENDING_VALIDATION"}`, "backup cifrado externo + restore-test; PVC no es backup", "DECLARED"]));
+
+  lines.push("", `### Red autorizada ${env}`, "", "| NetworkPolicy | Flujo | Estado |", "|---|---|---|");
+  for (const policy of resources.filter((r) => r.kind === "NetworkPolicy")) lines.push(row([policy.metadata.name, (policy.spec?.policyTypes ?? []).join("/"), "DECLARED"]));
+}
+
+lines.push(
+  "", "## Identidades, configuración y secretos", "",
+  "Las ServiceAccounts de workloads no reciben token automático ni RBAC Kubernetes. `platform-reader`, `pipeline-build` y `gitops-reconciler` son identidades separadas con permisos acotados — DECLARED.", "",
+  "Los nombres `ingestion-runtime`, `scoring-runtime`, `database-migrator`, `database-retention`, `database-runtime`, `database-tls`, `pii-keyring`, `database-backup`, `backup-target`, `registry-push` y `gitops-repository` son referencias; este documento nunca contiene sus valores — DECLARED.",
+  "", "## CI, GitOps y promoción", "",
+  "PR: inspect → test → secure → render. Merge: build secuencial una sola vez → publish por digest → PR GitOps → reconcile → migration PreSync → rollout → smoke → report — DECLARED.",
+  `Repositorio de aplicación: ${repositoryContract.spec.applicationRepository} — DECLARED. Repositorio de estado deseado y rama protegida: PENDING_VALIDATION.`,
+  "Rollback ordinario: revertir por PR el digest/configuración a una revisión saludable; nunca aplicar directamente. Los esquemas deben ser compatibles N/N-1; restaurar datos es recuperación, no rollback — DECLARED.",
+  "", "## Observabilidad", "",
+  "Endpoints `/metrics` internos para ingestion y scoring; logs JSON con redacción. Alertas mínimas: disponibilidad del frontend, DB, tasa/latencia de scoring, migración, retención, reconciliador, recuperación PostgreSQL y salud GitOps — DECLARED.",
+  "Dashboards y recursos ServiceMonitor/PrometheusRule: PENDING_VALIDATION hasta descubrir una integración aprobada.",
+  "", "## Procedimientos seguros", "",
+  "```bash",
+  "oc project rh-ee-mpolo-dev",
+  "scripts/platform/discover --context current --namespace rh-ee-mpolo-dev --output build/platform/dev-profile.json",
+  "scripts/platform/render --all --output-dir build/rendered",
+  "scripts/platform/validate --all --cluster-version 4.21.21 --evidence-dir build/platform/evidence/static",
+  "oc -n rh-ee-mpolo-dev get deployments,statefulsets,jobs,cronjobs,pods,services,routes,pvc",
+  "oc -n rh-ee-mpolo-dev get events --sort-by=.lastTimestamp",
+  "oc -n rh-ee-mpolo-dev logs deployment/ingestion --since=15m",
+  "scripts/platform/smoke --environment dev --namespace rh-ee-mpolo-dev --fixture tests/fixtures/medium-risk-application.json --evidence build/platform/evidence/dev/smoke.json",
+  "scripts/platform/verify-backup-restore --environment dev --restore-target isolated --evidence build/platform/evidence/dev/restore.json",
+  "scripts/platform/rollback --environment dev --to-release HEALTHY_RELEASE --propose-only",
+  "```",
+  "Ningún procedimiento consulta objetos Secret ni imprime credenciales — DECLARED.",
+  "", "## Estado de última verificación", "",
+  "Render, pruebas, imágenes, SBOM y políticas: DECLARED por `build/platform/evidence/static-validation.json`. Bootstrap namespace-scoped: OBSERVED por `build/platform/evidence/bootstrap-observed.json`. Reconciliación, pods observados, Route asignada, persistencia y smoke: PENDING_VALIDATION en `build/platform/evidence/dev-release.json`; promoción/rollback productivo: PENDING_VALIDATION en `build/platform/evidence/production-release.json`.",
+  "Los pods se identifican por su controlador y réplicas deseadas; los nombres efímeros nunca son identidad operativa estable — DECLARED.",
+  "", "## PLATFORM_INPUT_REQUIRED", "",
+  "| Dato indispensable | Motivo | Responsable/canal seguro | Estado |", "|---|---|---|---|",
+  row(["Controlador GitOps aprobado, repositorio de estado deseado y rama protegida", "la API argoproj.io no fue confirmada", "administrador de plataforma; registrar identificadores no sensibles", "PENDING_VALIDATION"]),
+  row(["Referencias OIDC, DB productiva, backup y registro", "son servicios controlados por la organización", "propietarios de identidad/datos por vault o canal corporativo; solo nombres aquí", "PENDING_VALIDATION"]),
+  row(["Destino, dominio/CIDR/TLS y aprobación productiva", "determinan conectividad y liberación regulada", "plataforma/seguridad/cambio; ticket o catálogo aprobado", "PENDING_VALIDATION"]),
+  "", "## Procedencia", "",
+  "`DECLARED`: manifiestos renderizados y contratos versionados. `OBSERVED`: perfil sanitizado obtenido mediante consultas allowlist de solo lectura. `PENDING_VALIDATION`: dato dinámico o externo aún no demostrado.",
+);
+if (![...lines.join("\n").matchAll(/\b(DECLARED|OBSERVED|PENDING_VALIDATION)\b/g)].every((m) => allowedStatus.has(m[1]))) throw new Error("invalid provenance marker");
+fs.mkdirSync(path.dirname(output), { recursive: true });
+fs.writeFileSync(output, `${lines.join("\n")}\n`, { mode: 0o644 });
+process.stdout.write(`operations document generated: ${output}\n`);

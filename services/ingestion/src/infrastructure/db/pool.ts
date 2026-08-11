@@ -15,6 +15,10 @@ export function createDatabasePool(config: AppConfig["database"]): pg.Pool {
     ssl:
       config.sslMode === "disable"
         ? false
-        : { rejectUnauthorized: config.sslMode === "verify-full" },
+        : {
+            rejectUnauthorized: config.sslMode === "verify-full",
+            ...(config.ca ? { ca: config.ca } : {}),
+            ...(config.serverName ? { servername: config.serverName } : {}),
+          },
   });
 }

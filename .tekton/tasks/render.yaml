@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-render}
+spec:
+  params: [{name: toolbox-image, type: string}, {name: cluster-version, type: string, default: "4.21.21"}]
+  workspaces: [{name: source}]
+  results: [{name: render-evidence, type: string}]
+  steps:
+    - name: render-and-policy
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        scripts/platform/render --all --output-dir "$(workspaces.source.path)/pipeline-artifacts/rendered"
+        scripts/platform/validate --all --cluster-version "$(params.cluster-version)" --evidence-dir "$(workspaces.source.path)/pipeline-artifacts/evidence/static"
+        printf '%s' "$(workspaces.source.path)/pipeline-artifacts/evidence/static/static-validation.json" > "$(results.render-evidence.path)"
+      computeResources: {requests: {cpu: 250m, memory: 512Mi}, limits: {cpu: "1", memory: 1Gi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

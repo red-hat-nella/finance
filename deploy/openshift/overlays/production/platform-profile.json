@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "platform.finance2/v1",
+  "generatedAt": "2026-08-09T00:00:00Z",
+  "environment": "production",
+  "cluster": {
+    "contextRef": "production-context-pending",
+    "namespace": "production-pending",
+    "version": null,
+    "status": "PENDING_VALIDATION"
+  },
+  "capabilities": [
+    {"name":"gitops-reconciler","available":null,"version":null,"status":"PENDING_VALIDATION","sourceRef":"organization approval required","alternative":"approved GitOps reconciler"},
+    {"name":"managed-postgresql","available":null,"version":null,"status":"PENDING_VALIDATION","sourceRef":"production data service contract","alternative":"supported operator after discovery"},
+    {"name":"backup-restore","available":null,"version":null,"status":"PENDING_VALIDATION","sourceRef":"production recovery contract","alternative":"provider PITR plus isolated restore test"}
+  ],
+  "inputs": [
+    {"name":"productionDestination","classification":"EXTERNAL_REQUIRED","value":null,"reference":null,"evidence":"organization controls destination","requiredFor":["bootstrap","promotion","runtime","verification"],"status":"PENDING_VALIDATION"},
+    {"name":"oidcConfiguration","classification":"EXTERNAL_REQUIRED","value":null,"reference":null,"evidence":"organization controls identity and DNS","requiredFor":["promotion","runtime","verification"],"status":"PENDING_VALIDATION"},
+    {"name":"databaseRuntime","classification":"SECRET_REFERENCE","value":null,"reference":"database-runtime and database-tls","evidence":"contracts/secret-references.md","requiredFor":["bootstrap","runtime"],"status":"DECLARED"},
+    {"name":"backupTarget","classification":"SECRET_REFERENCE","value":null,"reference":"backup-target","evidence":"contracts/secret-references.md","requiredFor":["bootstrap","runtime","verification"],"status":"PENDING_VALIDATION"}
+  ],
+  "sources": [
+    {"state":"PENDING_VALIDATION","sourceType":"repository","sourceRef":"specs/002-openshift-runtime-requirements/plan.md#platform-input-required","capturedAt":"2026-08-09T00:00:00Z"}
+  ]
+}

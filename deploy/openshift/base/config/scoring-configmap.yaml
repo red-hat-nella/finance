@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scoring-config
+  labels: {app.kubernetes.io/part-of: alternative-credit-scoring}
+data:
+  APP_ENV: production
+  CRITERIA_VERSION: SCORING-MVP-1.0.0
+  LOG_LEVEL: info

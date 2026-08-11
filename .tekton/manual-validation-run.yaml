@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: finance2-validation-
+  namespace: rh-ee-mpolo-dev
+  labels:
+    app.kubernetes.io/name: finance2-validation
+    app.kubernetes.io/part-of: alternative-credit-scoring
+spec:
+  pipelineRef: {name: finance2-release}
+  taskRunTemplate: {serviceAccountName: pipeline-build}
+  params:
+    - {name: delivery-mode, value: pr}
+    - {name: commit-sha, value: 4b26afaed87967c3baded18e9cfc46fffa04cf01}
+    - {name: environment, value: dev}
+    - {name: namespace, value: rh-ee-mpolo-dev}
+    - {name: registry, value: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev}
+    - {name: gitops-repository, value: PLATFORM_INPUT_REQUIRED}
+    - {name: toolbox-image, value: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/finance2-toolbox@sha256:fb31c93b67e12d5af2f95edb9561b6aef4d0117fa311aecf554a2a58ad13d9d2}
+    - {name: security-image, value: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/finance2-toolbox@sha256:fb31c93b67e12d5af2f95edb9561b6aef4d0117fa311aecf554a2a58ad13d9d2}
+    - {name: builder-image, value: quay.io/buildah/stable@sha256:90aeeb40ab1402bc76b3c3eab38548dfddf1c8d80ef006daa21a6a1a90a0cde3}
+    - {name: publisher-image, value: quay.io/skopeo/stable@sha256:47853bb9fb24202af9110531ebd6e43c5f97701254ca290596640290d17942f4}
+  workspaces:
+    - {name: source, persistentVolumeClaim: {claimName: finance2-source}}
+    - {name: artifacts, emptyDir: {}}
+    - {name: gitops, emptyDir: {}}
+    - {name: git-auth, emptyDir: {}}

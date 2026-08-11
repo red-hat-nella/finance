@@ -9,6 +9,8 @@ const databaseSchema = z.object({
   user: z.string().min(1),
   password: z.string().min(8),
   sslMode: z.enum(["disable", "require", "verify-full"]),
+  ca: z.string().min(1).optional(),
+  serverName: z.string().min(1).optional(),
 });
 
 export function loadJobDatabaseConfig(): AppConfig["database"] {
@@ -23,5 +25,11 @@ export function loadJobDatabaseConfig(): AppConfig["database"] {
     user: process.env["DATABASE_USER"] ?? "scoring_app",
     password,
     sslMode: process.env["DATABASE_SSL_MODE"] ?? "disable",
+    ...(process.env["DATABASE_CA_FILE"]
+      ? { ca: readFileSync(process.env["DATABASE_CA_FILE"], "utf8") }
+      : {}),
+    ...(process.env["DATABASE_SERVER_NAME"]
+      ? { serverName: process.env["DATABASE_SERVER_NAME"] }
+      : {}),
   });
 }

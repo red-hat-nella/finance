@@ -24,6 +24,18 @@ interface AcceptanceMetric {
   checks?: number;
 }
 
+function bogotaCalendarDate(value: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
 async function attachMetric(
   testInfo: TestInfo,
   metric: AcceptanceMetric,
@@ -68,7 +80,7 @@ async function createEvaluation(
   return {
     evaluationId: result.evaluationId,
     documentNumber,
-    completedDate: String(result.completedAt).slice(0, 10),
+    completedDate: bogotaCalendarDate(String(result.completedAt)),
   };
 }
 

@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-inspect}
+spec:
+  params: [{name: toolbox-image, type: string}]
+  workspaces: [{name: source}]
+  steps:
+    - name: inspect
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        scripts/platform/validate --architecture
+      computeResources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

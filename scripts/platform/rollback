@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENVIRONMENT=""
+RELEASE=""
+PROPOSE_ONLY=false
+while (($#)); do
+  case "$1" in
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --to-release) RELEASE="$2"; shift 2 ;;
+    --propose-only) PROPOSE_ONLY=true; shift ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ "$ENVIRONMENT" =~ ^(dev|production)$ && -n "$RELEASE" ]] || { echo "environment and healthy release are required" >&2; exit 2; }
+record="$ROOT/build/platform/releases/$RELEASE.json"
+[[ -r "$record" ]] || { echo "healthy release evidence not found: $RELEASE" >&2; exit 1; }
+jq -e '.checks | any(.type=="migration" and .result=="PASS" and (.summary|test("N-1 compatible";"i")))' "$record" >/dev/null || {
+  echo "schema is not proven N-1 compatible; ordinary rollback is blocked and destructive down migration is forbidden" >&2
+  exit 1
+}
+proposal="$ROOT/build/platform/rollback/$ENVIRONMENT-$RELEASE.json"
+mkdir -p "$(dirname "$proposal")"
+jq -n --arg environment "$ENVIRONMENT" --arg releaseId "$RELEASE" --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schemaVersion:"rollback-proposal.finance2/v1",environment:$environment,releaseId:$releaseId,generatedAt:$generatedAt,mode:"gitops-revert",status:"PROPOSED"}' > "$proposal"
+[[ "$PROPOSE_ONLY" == true ]] || { echo "direct cluster rollback is forbidden; submit the generated GitOps proposal" >&2; exit 2; }
+echo "rollback proposal written: $proposal"

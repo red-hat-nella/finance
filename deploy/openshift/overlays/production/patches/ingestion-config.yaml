@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ingestion-config}
+data:
+  DATABASE_HOST: external-postgres
+  DATABASE_SSL_MODE: verify-full
+  DATABASE_CA_FILE: /run/secrets/database-tls/ca.crt
+  DATABASE_SERVER_NAME: postgresql.production.invalid

@@ -1,0 +1,9 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: frontend
+  labels: {app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: alternative-credit-scoring}
+spec:
+  to: {kind: Service, name: frontend}
+  port: {targetPort: http}
+  tls: {termination: edge, insecureEdgeTerminationPolicy: Redirect}

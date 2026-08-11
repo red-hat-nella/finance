@@ -3,9 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REGISTRY="${IMAGE_REGISTRY:-localhost/alternative-credit-scoring}"
-TAG="${IMAGE_TAG:-1.0.0}"
-PUSH=false
-[[ "${1:-}" == "--push" ]] && PUSH=true
+TAG="${IMAGE_TAG:-$(git -C "$ROOT" rev-parse HEAD)}"
+OUT="${IMAGE_BUILD_OUTPUT:-$ROOT/build/images/build.json}"
+if [[ "${1:-}" == "--push" ]]; then
+  echo "--push was removed; use scripts/images/publish.sh after scan" >&2
+  exit 2
+fi
+[[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "IMAGE_TAG must be the full commit SHA" >&2; exit 2; }
 
 podman build -t "$REGISTRY/frontend:$TAG" "$ROOT/frontend"
 podman build -f "$ROOT/services/ingestion/Dockerfile" -t "$REGISTRY/ingestion:$TAG" "$ROOT"
@@ -39,17 +43,20 @@ verify_arbitrary_user() {
   [[ "$ready" == true ]]
 }
 
+records="$(mktemp)"
+trap 'rm -f "$records"' EXIT
 for component in frontend ingestion scoring; do
   image="$REGISTRY/$component:$TAG"
   verify_arbitrary_user "$component" "$image"
   id="$(podman image inspect "$image" --format '{{.Id}}')"
   printf '%s_IMAGE_ID=%s\n' "${component^^}" "$id"
-  if [[ "$PUSH" == true ]]; then
-    digest_file="$(mktemp)"
-    podman push --digestfile "$digest_file" "$image" "docker://$image"
-    printf '%s_DIGEST=%s\n' "${component^^}" "$(<"$digest_file")"
-    rm "$digest_file"
-  fi
+  jq -n --arg component "$component" --arg image "$image" --arg imageId "$id" \
+    '{component:$component,image:$image,imageId:$imageId}' >> "$records"
 done
 
-echo "Imágenes reproducibles y UID arbitrario: PASS"
+mkdir -p "$(dirname "$OUT")"
+jq -s --arg commitSha "$TAG" \
+  '{schemaVersion:"image-build.finance2/v1",commitSha:$commitSha,images:map({key:.component,value:{reference:.image,imageId:.imageId}})|from_entries}' \
+  "$records" > "$OUT"
+
+echo "Imágenes construidas una vez y UID arbitrario: PASS ($OUT)"

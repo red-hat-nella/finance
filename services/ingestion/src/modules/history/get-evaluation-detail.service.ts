@@ -3,6 +3,7 @@ import type { AppConfig } from "../../config/schema.js";
 import type { components } from "../../generated/public/index.js";
 import type { AlternativeDataInput as DomainAlternativeDataInput } from "../../domain/applications/application.js";
 import { decryptField } from "../../infrastructure/crypto/field-crypto.js";
+import { encryptionKeyForVersion } from "../../config/pii-keyring.js";
 import type { AuditWriter } from "../audit/audit-writer.js";
 import type { HistoryActor } from "./search-history.service.js";
 
@@ -41,6 +42,7 @@ interface SnapshotRow extends pg.QueryResultRow {
   draft_expires_at: Date | null;
   revision_number: number;
   lock_version: number;
+  pii_key_version?: number | null;
   document_type: components["schemas"]["DocumentType"];
   document_ciphertext: Buffer;
   document_nonce: Buffer;
@@ -139,7 +141,7 @@ export class EvaluationDetailRepository {
   async getSnapshot(revisionId: string): Promise<SnapshotRow | null> {
     const result = await this.pool.query<SnapshotRow>(
       `SELECT a.public_id application_public_id,a.current_status application_status,a.created_at application_created_at,a.updated_at application_updated_at,a.draft_expires_at,
-              r.revision_number,r.lock_version,s.document_type,s.document_ciphertext,s.document_nonce,s.document_tag,s.document_masked,s.full_name_ciphertext,s.full_name_nonce,s.full_name_tag,s.display_name,s.phone_ciphertext,s.phone_nonce,s.phone_tag,s.email_ciphertext,s.email_nonce,s.email_tag,
+              r.revision_number,r.lock_version,s.pii_key_version,s.document_type,s.document_ciphertext,s.document_nonce,s.document_tag,s.document_masked,s.full_name_ciphertext,s.full_name_nonce,s.full_name_tag,s.display_name,s.phone_ciphertext,s.phone_nonce,s.phone_tag,s.email_ciphertext,s.email_nonce,s.email_tag,
               c.status consent_status,c.notice_version,c.purpose_code,c.recorded_at consent_recorded_at,
               d.income_status,d.income_unavailable_reason,d.utilities_status,d.utilities_unavailable_reason,d.mobile_status,d.mobile_unavailable_reason,
               i.monthly_income_cop,i.source_type,i.source_other_description,i.stability_months,
@@ -285,7 +287,10 @@ export class GetEvaluationDetailService {
     row: SnapshotRow,
     utilityRows: readonly UtilityRow[],
   ): ApplicationResource {
-    const key = this.config.pii.encryptionKey;
+    const key = encryptionKeyForVersion(
+      this.config.pii,
+      row.pii_key_version ?? this.config.pii.keyVersion,
+    );
     const contact: { phone?: string; email?: string } = {};
     if (row.phone_ciphertext && row.phone_nonce && row.phone_tag)
       contact.phone = decryptField(

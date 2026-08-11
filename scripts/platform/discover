@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+CONTEXT="current"
+NAMESPACE="rh-ee-mpolo-dev"
+OUTPUT="$ROOT/build/platform/dev-profile.json"
+
+while (($#)); do
+  case "$1" in
+    --context) CONTEXT="$2"; shift 2 ;;
+    --namespace) NAMESPACE="$2"; shift 2 ;;
+    --output) OUTPUT="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+command -v oc >/dev/null || { echo "oc is required" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
+
+CURRENT_NAMESPACE="$(oc project -q)"
+[[ "$CURRENT_NAMESPACE" == "$NAMESPACE" ]] || {
+  echo "current namespace '$CURRENT_NAMESPACE' differs from authorized namespace '$NAMESPACE'" >&2
+  exit 1
+}
+
+CONTEXT_REF="$(oc whoami --show-context)"
+if [[ "$CONTEXT" != current && "$CONTEXT" != "$CONTEXT_REF" ]]; then
+  echo "requested context does not match the authenticated context" >&2
+  exit 1
+fi
+
+VERSION="$(oc get clusterversion version -o jsonpath='{.status.desired.version}')"
+TEKTON=false
+GITOPS=false
+EXTERNAL_SECRETS=false
+oc api-resources --api-group=tekton.dev -o name 2>/dev/null | grep -Eq '^pipelines(\.tekton\.dev)?$' && TEKTON=true
+oc api-resources --api-group=argoproj.io -o name 2>/dev/null | grep -Eq '^applications(\.argoproj\.io)?$' && GITOPS=true
+oc api-resources --api-group=external-secrets.io -o name 2>/dev/null | grep -Eq '^externalsecrets(\.external-secrets\.io)?$' && EXTERNAL_SECRETS=true
+
+# The following reads are intentionally allowlisted. Their payload is not copied to the
+# profile; only capability presence and a non-sensitive source reference are retained.
+oc -n "$NAMESPACE" get resourcequota -o name >/dev/null
+oc -n "$NAMESPACE" get limitrange -o name >/dev/null
+STORAGE_CLASS="$(oc get storageclass -o json | jq -r '.items[] | select(.metadata.annotations["storageclass.kubernetes.io/is-default-class"] == "true") | .metadata.name' | head -n1)"
+oc -n "$NAMESPACE" get routes.route.openshift.io -o name >/dev/null
+CAN_CREATE_DEPLOYMENT="$(oc auth can-i create deployments.apps -n "$NAMESPACE")"
+CAN_CREATE_ROUTE="$(oc auth can-i create routes.route.openshift.io -n "$NAMESPACE")"
+
+mkdir -p "$(dirname "$OUTPUT")"
+jq -n \
+  --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg contextRef "$CONTEXT_REF" \
+  --arg namespace "$NAMESPACE" \
+  --arg version "$VERSION" \
+  --arg storageClass "${STORAGE_CLASS:-pending}" \
+  --argjson tekton "$TEKTON" \
+  --argjson gitops "$GITOPS" \
+  --argjson externalSecrets "$EXTERNAL_SECRETS" \
+  --arg canCreateDeployment "$CAN_CREATE_DEPLOYMENT" \
+  --arg canCreateRoute "$CAN_CREATE_ROUTE" \
+  '{
+    schemaVersion:"platform.finance2/v1", generatedAt:$generatedAt, environment:"dev",
+    cluster:{contextRef:$contextRef,namespace:$namespace,version:$version,status:"OBSERVED"},
+    capabilities:[
+      {name:"openshift-pipelines",available:$tekton,version:null,status:"OBSERVED",sourceRef:"tekton.dev API discovery",alternative:"approved CI with equivalent gates"},
+      {name:"openshift-gitops",available:$gitops,version:null,status:"OBSERVED",sourceRef:"argoproj.io API discovery",alternative:"approved GitOps reconciler"},
+      {name:"external-secrets",available:$externalSecrets,version:null,status:"OBSERVED",sourceRef:"external-secrets.io API discovery",alternative:"secure out-of-band provisioning"},
+      {name:"resource-governance",available:true,version:null,status:"OBSERVED",sourceRef:"ResourceQuota/LimitRange namespace query",alternative:null}
+    ],
+    inputs:[
+      {name:"namespace",classification:"DISCOVERED",value:$namespace,reference:null,evidence:"current authenticated project",requiredFor:["bootstrap","runtime","verification"],status:"OBSERVED"},
+      {name:"storageClass",classification:"DISCOVERED",value:$storageClass,reference:null,evidence:"default StorageClass query",requiredFor:["runtime","verification"],status:"OBSERVED"},
+      {name:"deploymentPermission",classification:"DISCOVERED",value:$canCreateDeployment,reference:null,evidence:"oc auth can-i create deployments.apps",requiredFor:["bootstrap"],status:"OBSERVED"},
+      {name:"routePermission",classification:"DISCOVERED",value:$canCreateRoute,reference:null,evidence:"oc auth can-i create routes.route.openshift.io",requiredFor:["bootstrap"],status:"OBSERVED"},
+      {name:"runtimeSecrets",classification:"SECRET_REFERENCE",value:null,reference:"contracts/secret-references.md",evidence:"least privilege contract",requiredFor:["bootstrap","runtime"],status:"DECLARED"}
+    ],
+    sources:[{state:"OBSERVED",sourceType:"cli",sourceRef:"scripts/platform/discover allowlisted queries",capturedAt:$generatedAt}]
+  }' > "$OUTPUT"
+
+node "$ROOT/scripts/platform/validate-contracts.mjs" \
+  --schema platform-profile.schema.json --document "$OUTPUT"
+echo "sanitized platform profile written: $OUTPUT"

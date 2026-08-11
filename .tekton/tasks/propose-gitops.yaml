@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-propose-gitops}
+spec:
+  params:
+    - {name: toolbox-image, type: string}
+    - {name: repository, type: string}
+    - {name: environment, type: string}
+    - {name: registry, type: string}
+    - {name: commit-sha, type: string}
+    - {name: frontend-digest, type: string}
+    - {name: ingestion-digest, type: string}
+    - {name: scoring-digest, type: string}
+  workspaces: [{name: gitops}, {name: git-auth}]
+  results: [{name: proposal-ref, type: string}]
+  steps:
+    - name: branch-and-pull-request
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.gitops.path)
+      env: [{name: GIT_TERMINAL_PROMPT, value: "0"}]
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        branch="finance2/$(params.environment)-$(params.commit-sha)"
+        git clone "$(params.repository)" desired-state
+        cd desired-state
+        git checkout -b "$branch"
+        cd "deploy/openshift/overlays/$(params.environment)"
+        kustomize edit set image \
+          quay.io/finance2/frontend="$(params.registry)/frontend@$(params.frontend-digest)" \
+          quay.io/finance2/ingestion="$(params.registry)/ingestion@$(params.ingestion-digest)" \
+          quay.io/finance2/scoring="$(params.registry)/scoring@$(params.scoring-digest)"
+        cd ../../../..
+        git add deploy/openshift/overlays/$(params.environment)/kustomization.yaml
+        git -c user.name=finance2-gitops -c user.email=finance2-gitops.invalid commit -m "Promote $(params.commit-sha) to $(params.environment)"
+        git push origin "HEAD:refs/heads/$branch"
+        curl --fail --silent --show-error --config "$(workspaces.git-auth.path)/curl.conf" \
+          -H 'content-type: application/json' -X POST "$(workspaces.git-auth.path)/pull-request-endpoint" \
+          --data "$(jq -n --arg title "Promote $(params.commit-sha)" --arg head "$branch" --arg base main '{title:$title,head:$head,base:$base}')" >/dev/null
+        printf '%s' "$branch" > "$(results.proposal-ref.path)"
+      computeResources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

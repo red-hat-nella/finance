@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PROFILE=""
+PREFLIGHT_ONLY=false
+EVIDENCE=""
+while (($#)); do
+  case "$1" in
+    --profile) PROFILE="$2"; shift 2 ;;
+    --preflight-only) PREFLIGHT_ONLY=true; shift ;;
+    --evidence) EVIDENCE="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ -r "$PROFILE" ]] || { echo "platform profile is required" >&2; exit 2; }
+node "$ROOT/scripts/platform/validate-contracts.mjs" --schema platform-profile.schema.json --document "$PROFILE"
+namespace="$(jq -r '.cluster.namespace' "$PROFILE")"
+environment="$(jq -r '.environment' "$PROFILE")"
+[[ "$environment" == dev && "$namespace" == rh-ee-mpolo-dev ]] || { echo "only the authorized dev bootstrap is available" >&2; exit 1; }
+[[ "$(oc project -q)" == "$namespace" ]] || { echo "authenticated project differs from profile" >&2; exit 1; }
+
+required=(
+  'create deployments.apps'
+  'create services'
+  'create routes.route.openshift.io'
+  'create jobs.batch'
+  'create cronjobs.batch'
+  'create networkpolicies.networking.k8s.io'
+  'create pipelineruns.tekton.dev'
+)
+failed=false
+for check in "${required[@]}"; do
+  read -r verb resource <<<"$check"
+  result="$(oc auth can-i "$verb" "$resource" -n "$namespace")"
+  printf '%-8s %-45s %s\n' "$verb" "$resource" "$result"
+  [[ "$result" == yes ]] || failed=true
+done
+[[ "$failed" == false ]] || { echo "bootstrap permission preflight failed" >&2; exit 1; }
+
+gitops_available=false
+oc api-resources --api-group=argoproj.io -o name 2>/dev/null | grep -Eq '^applications(\.argoproj\.io)?$' && gitops_available=true
+pac_available=false
+oc api-resources --api-group=pipelinesascode.tekton.dev -o name 2>/dev/null | grep -q . && pac_available=true
+echo "GitOps API available: $gitops_available"
+echo "Pipelines as Code API available: $pac_available"
+oc -n "$namespace" apply --dry-run=server -k "$ROOT/deploy/openshift/overlays/dev" >/dev/null
+if [[ -n "$EVIDENCE" ]]; then
+  mkdir -p "$(dirname "$EVIDENCE")"
+  quota_refs="$(oc -n "$namespace" get resourcequota -o name | paste -sd, -)"
+  limit_refs="$(oc -n "$namespace" get limitrange -o name | paste -sd, -)"
+  route_api=false; oc api-resources --api-group=route.openshift.io -o name 2>/dev/null | grep -Eq '^routes(\.route\.openshift\.io)?$' && route_api=true
+  jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg namespace "$namespace" \
+    --arg version "$(jq -r '.cluster.version' "$PROFILE")" --arg quotaRefs "$quota_refs" --arg limitRefs "$limit_refs" \
+    --arg storageClass "$(jq -r '.inputs[]|select(.name=="storageClass")|.value' "$PROFILE")" \
+    --argjson gitops "$gitops_available" --argjson pac "$pac_available" --argjson routeApi "$route_api" \
+    '{schemaVersion:"preflight.finance2/v1",generatedAt:$generatedAt,namespace:$namespace,clusterVersion:$version,result:"PASS",readMode:"ALLOWLIST_NO_SECRETS",checks:{quotaRefs:$quotaRefs,limitRangeRefs:$limitRefs,storageClass:$storageClass,routeApi:$routeApi,restrictedV2:"PASS_SERVER_DRY_RUN",permissions:"PASS",gitopsApi:$gitops,pipelinesAsCodeApi:$pac}}' > "$EVIDENCE"
+fi
+if [[ "$PREFLIGHT_ONLY" != true ]]; then
+  echo "bootstrap mutation requires the approved GitOps controller and secure references; run via the authorized bootstrap workflow" >&2
+  exit 2
+fi
+echo "bootstrap preflight: PASS"

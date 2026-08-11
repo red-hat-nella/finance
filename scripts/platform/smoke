@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENVIRONMENT="dev"
+NAMESPACE="rh-ee-mpolo-dev"
+FIXTURE="$ROOT/tests/fixtures/medium-risk-application.json"
+EVIDENCE="$ROOT/build/platform/evidence/dev/smoke.json"
+EXPECT_SCORING_UNAVAILABLE=false
+
+while (($#)); do
+  case "$1" in
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --namespace) NAMESPACE="$2"; shift 2 ;;
+    --fixture) FIXTURE="$2"; shift 2 ;;
+    --evidence) EVIDENCE="$2"; shift 2 ;;
+    --expect-scoring-unavailable) EXPECT_SCORING_UNAVAILABLE=true; shift ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+BASE_URL="${SMOKE_BASE_URL:-}"
+if [[ -z "$BASE_URL" ]]; then
+  host="$(oc -n "$NAMESPACE" get route frontend -o jsonpath='{.spec.host}')"
+  [[ -n "$host" ]] || { echo "frontend Route host is unavailable" >&2; exit 1; }
+  BASE_URL="https://$host"
+fi
+API="${BASE_URL%/}/api/v1"
+headers=(-H 'content-type: application/json')
+if [[ -n "${SMOKE_AUTH_HEADER_FILE:-}" ]]; then
+  [[ -r "$SMOKE_AUTH_HEADER_FILE" ]] || { echo "SMOKE_AUTH_HEADER_FILE is not readable" >&2; exit 1; }
+  headers+=(-H "@$SMOKE_AUTH_HEADER_FILE")
+fi
+
+payload="$(mktemp)"
+response="$(mktemp)"
+trap 'rm -f "$payload" "$response"' EXIT
+jq --arg suffix "$(date +%s%N | tail -c 10)" '.applicant.documentNumber=$suffix' "$FIXTURE" > "$payload"
+idempotency="$(cat /proc/sys/kernel/random/uuid)"
+created_headers="$(curl -fsS -i -X POST "$API/applications" "${headers[@]}" -H "Idempotency-Key: $idempotency" --data @"$payload")"
+etag="$(printf '%s\n' "$created_headers" | awk 'BEGIN{IGNORECASE=1} /^etag:/ {gsub("\r",""); print $2}')"
+application_id="$(printf '%s\n' "$created_headers" | sed '1,/^\r$/d' | jq -r .applicationId)"
+[[ "$application_id" =~ ^[0-9a-f-]{36}$ && -n "$etag" ]] || { echo "application creation contract failed" >&2; exit 1; }
+
+status="$(curl -sS -o "$response" -w '%{http_code}' -X POST "$API/applications/$application_id/evaluations" \
+  "${headers[@]}" -H "Idempotency-Key: $(cat /proc/sys/kernel/random/uuid)" -H "If-Match: $etag" \
+  -d '{"revisionNumber":1,"expectedCriteriaVersion":"SCORING-MVP-1.0.0"}')"
+if [[ "$EXPECT_SCORING_UNAVAILABLE" == true ]]; then
+  [[ "$status" == 502 || "$status" == 504 ]]
+  jq -e '.retryable==true and (.code=="SCORING_UNAVAILABLE" or .code=="SCORING_TIMEOUT")' "$response" >/dev/null
+  result="PASS"
+  summary="scoring dependency failure remained recoverable"
+else
+  [[ "$status" == 201 ]]
+  jq -e '.score==634 and .riskBand=="riesgo_medio" and .state=="revision_manual"' "$response" >/dev/null
+  evaluation_id="$(jq -r .evaluationId "$response")"
+  curl -fsS "$API/evaluations/$evaluation_id" "${headers[@]}" | jq -e '.score==634' >/dev/null
+  curl -fsS -X POST "$API/evaluations/search" "${headers[@]}" -d '{"page":1}' | jq -e --arg id "$evaluation_id" '.items|any(.evaluationId==$id)' >/dev/null
+  result="PASS"
+  summary="synthetic create, evaluate and query flow completed"
+fi
+
+mkdir -p "$(dirname "$EVIDENCE")"
+jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg environment "$ENVIRONMENT" --arg result "$result" --arg summary "$summary" --arg applicationId "$application_id" --arg evaluationId "${evaluation_id:-}" \
+  '{schemaVersion:"smoke-evidence.finance2/v1",generatedAt:$generatedAt,environment:$environment,result:$result,summary:$summary,applicationId:$applicationId,evaluationId:($evaluationId|if length>0 then . else null end)}' > "$EVIDENCE"
+echo "functional smoke: $result ($EVIDENCE)"

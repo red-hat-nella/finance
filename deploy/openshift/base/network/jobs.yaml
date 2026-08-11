@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: database-from-runtime-and-jobs, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}
+        - {podSelector: {matchLabels: {app.kubernetes.io/component: database-job}}}
+      ports: [{protocol: TCP, port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: database-jobs-to-postgres, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/component: database-job}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}}]
+      ports: [{protocol: TCP, port: 5432}]

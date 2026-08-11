@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://finance2.example.test/contracts/deployment-evidence-v1.schema.json",
+  "title": "Deployment Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "releaseId", "commitSha", "images", "environment", "gitopsRevision", "checks", "generatedAt"],
+  "properties": {
+    "schemaVersion": { "const": "deployment-evidence.finance2/v1" },
+    "releaseId": { "type": "string", "minLength": 1 },
+    "commitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "pipelineRunRef": { "type": ["string", "null"] },
+    "environment": { "enum": ["dev", "production"] },
+    "namespace": { "type": "string", "minLength": 1 },
+    "gitopsRevision": { "type": "string", "minLength": 1 },
+    "syncStatus": { "enum": ["PENDING", "SYNCING", "SYNCED", "DEGRADED", "FAILED"] },
+    "healthStatus": { "enum": ["UNKNOWN", "PROGRESSING", "HEALTHY", "DEGRADED"] },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frontend", "ingestion", "scoring"],
+      "properties": {
+        "frontend": { "$ref": "#/$defs/image" },
+        "ingestion": { "$ref": "#/$defs/image" },
+        "scoring": { "$ref": "#/$defs/image" }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "result", "sourceRef", "observedAt", "summary"],
+        "properties": {
+          "type": { "enum": ["inspect", "test", "secure", "build", "render", "publish", "reconcile", "migration", "rollout", "network", "smoke", "backup", "restore", "rollback", "report"] },
+          "result": { "enum": ["PASS", "FAIL", "PENDING_VALIDATION"] },
+          "sourceRef": { "type": "string", "minLength": 1 },
+          "observedAt": { "type": "string", "format": "date-time" },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "digest", "sbomRef", "scanRef"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "sbomRef": { "type": "string", "minLength": 1 },
+        "scanRef": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
+

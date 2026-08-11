@@ -24,6 +24,7 @@ import { evaluationRoutes } from "./http/routes/evaluations.routes.js";
 import { historyRoutes } from "./http/routes/history.routes.js";
 import { auditRoutes } from "./http/routes/audit.routes.js";
 import { mvpRoutes } from "./modules/mvp/mvp.routes.js";
+import { metricsMiddleware, renderMetrics } from "./observability/metrics.js";
 export function createApp(config: AppConfig, pool: pg.Pool): Express {
   const app = express();
   app.disable("x-powered-by");
@@ -37,6 +38,7 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
     }),
   );
   app.use(requestContext);
+  app.use(metricsMiddleware);
   app.use(accessLog(createLogger(config)));
   app.use(
     express.json({
@@ -46,6 +48,9 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
     }),
   );
   app.use(healthRoutes(pool));
+  app.get("/metrics", (_req, res) => {
+    res.type("text/plain; version=0.0.4").send(renderMetrics());
+  });
   const auth =
     config.nodeEnv === "development"
       ? (req: Request, _res: Response, next: NextFunction): void => {

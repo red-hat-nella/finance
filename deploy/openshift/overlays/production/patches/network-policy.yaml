@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingestion-to-jwks
+  labels: {app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations:
+    platform.finance2/state: PENDING_VALIDATION
+    platform.finance2/input: replace TEST-NET CIDR with authorized OIDC egress destination
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 198.51.100.0/32}}]
+      ports: [{protocol: TCP, port: 443}]

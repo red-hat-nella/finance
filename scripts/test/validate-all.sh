@@ -35,6 +35,7 @@ bash scripts/test/usability-acceptance.sh
 
 bash scripts/security/scan-runtime-logs.sh
 bash scripts/test/manifests-policy.sh
+bash scripts/test/validate-platform.sh
 bash scripts/images/build.sh
 bash scripts/images/scan.sh
 git diff --check

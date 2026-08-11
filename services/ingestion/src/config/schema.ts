@@ -11,6 +11,8 @@ export const configSchema = z.object({
     user: z.string().min(1),
     password: z.string().min(8),
     sslMode: z.enum(["disable", "require", "verify-full"]),
+    ca: z.string().min(1).optional(),
+    serverName: z.string().min(1).optional(),
   }),
   scoring: z.object({
     baseUrl: z.string().url(),
@@ -28,6 +30,7 @@ export const configSchema = z.object({
     encryptionKey: z.instanceof(Buffer).refine((value) => value.length === 32),
     hmacKey: z.instanceof(Buffer).refine((value) => value.length >= 32),
     keyVersion: z.number().int().positive(),
+    encryptionKeys: z.record(z.string(), z.instanceof(Buffer)).optional(),
   }),
   corsAllowedOrigins: z.array(z.string().url()),
   logLevel: z.enum(["debug", "info", "warn", "error"]),

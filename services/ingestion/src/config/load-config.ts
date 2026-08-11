@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { configSchema, type AppConfig } from "./schema.js";
+import { loadVersionedPiiKeys } from "./pii-keyring.js";
 
 function secret(
   fileVariable: string,
@@ -25,6 +26,17 @@ function secretBuffer(
 
 export function loadConfig(): AppConfig {
   const nodeEnv = process.env.NODE_ENV ?? "development";
+  const keyVersion = Number(process.env.PII_KEY_VERSION ?? 1);
+  const encryptionKey = secretBuffer(
+    "PII_ENCRYPTION_KEY_FILE",
+    "PII_ENCRYPTION_KEY",
+    "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
+  );
+  const hmacKey = secretBuffer(
+    "PII_HMAC_KEY_FILE",
+    "PII_HMAC_KEY",
+    "MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMQ==",
+  );
   const config = configSchema.parse({
     nodeEnv,
     port: Number(process.env.PORT ?? process.env.INGESTION_PORT ?? 8080),
@@ -39,6 +51,12 @@ export function loadConfig(): AppConfig {
         "local-development-password",
       ),
       sslMode: process.env.DATABASE_SSL_MODE ?? "disable",
+      ...(process.env.DATABASE_CA_FILE
+        ? { ca: readFileSync(process.env.DATABASE_CA_FILE, "utf8") }
+        : {}),
+      ...(process.env.DATABASE_SERVER_NAME
+        ? { serverName: process.env.DATABASE_SERVER_NAME }
+        : {}),
     },
     scoring: {
       baseUrl: process.env.SCORING_BASE_URL ?? "http://localhost:8081",
@@ -60,17 +78,10 @@ export function loadConfig(): AppConfig {
       algorithms: (process.env.AUTH_ALLOWED_ALGORITHMS ?? "RS256").split(","),
     },
     pii: {
-      encryptionKey: secretBuffer(
-        "PII_ENCRYPTION_KEY_FILE",
-        "PII_ENCRYPTION_KEY",
-        "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=",
-      ),
-      hmacKey: secretBuffer(
-        "PII_HMAC_KEY_FILE",
-        "PII_HMAC_KEY",
-        "MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMQ==",
-      ),
-      keyVersion: Number(process.env.PII_KEY_VERSION ?? 1),
+      encryptionKey,
+      hmacKey,
+      keyVersion,
+      encryptionKeys: loadVersionedPiiKeys(keyVersion, encryptionKey),
     },
     corsAllowedOrigins: (process.env.CORS_ALLOWED_ORIGINS ?? "")
       .split(",")
@@ -80,6 +91,11 @@ export function loadConfig(): AppConfig {
   if (nodeEnv === "production") {
     if (config.database.sslMode === "disable")
       throw new Error("DATABASE_SSL_MODE must protect production traffic");
+    if (
+      config.database.sslMode === "verify-full" &&
+      (!config.database.ca || !config.database.serverName)
+    )
+      throw new Error("verify-full requires DATABASE_CA_FILE and DATABASE_SERVER_NAME");
     if (
       !process.env.DATABASE_PASSWORD_FILE ||
       !process.env.PII_ENCRYPTION_KEY_FILE ||

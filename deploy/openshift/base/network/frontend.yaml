@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: router-to-frontend, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{namespaceSelector: {matchLabels: {network.openshift.io/policy-group: ingress}}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: frontend-to-ingestion, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}]
+      ports: [{protocol: TCP, port: 8080}]

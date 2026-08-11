@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "platform.finance2/v1",
+  "generatedAt": "not-a-date",
+  "environment": "dev",
+  "cluster": {"contextRef":"dev","namespace":"INVALID_NAMESPACE","status":"OBSERVED"},
+  "capabilities": [],
+  "inputs": [{"name":"credential","classification":"SECRET_REFERENCE","value":"forbidden","reference":"safe-ref","evidence":"fixture","requiredFor":["runtime"],"status":"DECLARED"}],
+  "sources": []
+}

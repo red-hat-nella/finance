@@ -21,7 +21,15 @@ fi
 
 render="$(mktemp)"
 trap 'rm -f "$render"' EXIT
-kubectl kustomize deploy/openshift/overlays/dev > "$render"
+if command -v kubectl >/dev/null 2>&1; then
+  kustomize_command=(kubectl kustomize)
+elif command -v oc >/dev/null 2>&1; then
+  kustomize_command=(oc kustomize)
+else
+  printf 'ERROR: se requiere oc o kubectl para renderizar los manifiestos.\n' >&2
+  exit 1
+fi
+"${kustomize_command[@]}" deploy/openshift/overlays/dev > "$render"
 if grep -Eq '^kind: Secret$|REPLACE_USING_CREATE_SECRETS_SCRIPT|private-key|scoring-service-token: [^/]' "$render"; then
   printf 'ERROR: el render de OpenShift contiene material secreto o sentinelas.\n' >&2
   failed=1

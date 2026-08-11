@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-report}
+spec:
+  params: [{name: toolbox-image, type: string}, {name: environment, type: string}, {name: commit-sha, type: string}]
+  workspaces: [{name: source}]
+  results: [{name: evidence-ref, type: string}, {name: operations-doc-ref, type: string}]
+  steps:
+    - name: release-report
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        artifact_root="$(workspaces.source.path)/pipeline-artifacts"
+        output="$artifact_root/evidence/release-$(params.environment).json"
+        node scripts/platform/report.mjs --offline --environment "$(params.environment)" --commit-sha "$(params.commit-sha)" --render-dir "$artifact_root/rendered/$(params.environment)" --output "$output"
+        node scripts/platform/validate-contracts.mjs --schema deployment-evidence.schema.json --document "$output"
+        document="$artifact_root/evidence/openshift-deployment.md"
+        scripts/platform/generate-operations-doc --render-root "$artifact_root/rendered" --output "$document" --offline
+        OPERATIONS_DOC_MAX_AGE_HOURS=1 scripts/platform/validate-operations-doc "$document" --render-root "$artifact_root/rendered"
+        printf '%s' "$output" > "$(results.evidence-ref.path)"
+        printf '%s' "$document" > "$(results.operations-doc-ref.path)"
+      computeResources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

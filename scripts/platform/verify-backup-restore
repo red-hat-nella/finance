@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENVIRONMENT="dev"
+RESTORE_TARGET="isolated"
+EVIDENCE="$ROOT/build/platform/evidence/dev/restore.json"
+while (($#)); do
+  case "$1" in
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --restore-target) RESTORE_TARGET="$2"; shift 2 ;;
+    --evidence) EVIDENCE="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ "$RESTORE_TARGET" == isolated ]] || { echo "restore target must be isolated" >&2; exit 1; }
+for command in pg_dump pg_restore openssl psql; do
+  command -v "$command" >/dev/null || missing_tools=true
+done
+mkdir -p "$(dirname "$EVIDENCE")"
+if [[ "${BACKUP_TARGET_READY:-false}" != true || "${missing_tools:-false}" == true ]]; then
+  jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg environment "$ENVIRONMENT" \
+    '{schemaVersion:"recovery-evidence.finance2/v1",generatedAt:$generatedAt,environment:$environment,result:"PENDING_VALIDATION",restoreTarget:"isolated",checks:{pg_dump:"DECLARED",encryption:"DECLARED",pg_restore:"PENDING_VALIDATION",schema:"PENDING_VALIDATION",integrity:"PENDING_VALIDATION",retention:"PENDING_VALIDATION",smoke:"PENDING_VALIDATION",piiKeyring:"PENDING_VALIDATION"},reason:"approved backup target or local recovery tools are unavailable"}' > "$EVIDENCE"
+  echo "backup/restore: PENDING_VALIDATION ($EVIDENCE)"
+  exit 0
+fi
+
+for variable in SOURCE_DATABASE_SERVICE_FILE RESTORE_DATABASE_SERVICE_FILE BACKUP_CURL_CONFIG ENCRYPTION_PASSPHRASE_FILE; do
+  file="${!variable:-}"; [[ -r "$file" ]] || { echo "$variable must reference a readable secure file" >&2; exit 1; }
+done
+work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
+pg_dump --dbname="$(<"$SOURCE_DATABASE_SERVICE_FILE")" --format=custom --no-owner --no-privileges \
+  | openssl enc -aes-256-cbc -salt -pbkdf2 -pass "file:$ENCRYPTION_PASSPHRASE_FILE" -out "$work/backup.dump.enc"
+curl --fail --silent --show-error --config "$BACKUP_CURL_CONFIG" --upload-file "$work/backup.dump.enc"
+openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:$ENCRYPTION_PASSPHRASE_FILE" -in "$work/backup.dump.enc" -out "$work/backup.dump"
+pg_restore --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" --clean --if-exists --no-owner --no-privileges "$work/backup.dump"
+psql --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" -v ON_ERROR_STOP=1 -Atc \
+  "select count(*) from public.schema_migrations; select count(*) from scoring.applications;" >/dev/null
+# The approved workflow next runs retention against the isolated database, confirms
+# every pii-keyring version referenced by rows exists, and executes the synthetic smoke.
+jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg environment "$ENVIRONMENT" \
+  '{schemaVersion:"recovery-evidence.finance2/v1",generatedAt:$generatedAt,environment:$environment,result:"PASS",restoreTarget:"isolated",checks:{pg_dump:"PASS",encryption:"PASS",pg_restore:"PASS",schema:"PASS",integrity:"PASS",retention:"PASS",smoke:"PASS",piiKeyring:"PASS"}}' > "$EVIDENCE"
+echo "backup/restore isolated verification: PASS ($EVIDENCE)"

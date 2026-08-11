@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -10,6 +10,7 @@ from app.api.health import router as health_router
 from app.api.problems import problem
 from app.api.scoring import router as scoring_router
 from app.observability.logging import configure_logging
+from app.observability.metrics import record_request, render_metrics, timer
 
 configure_logging()
 app = FastAPI(title="Motor interno de scoring", version="1.0.0", docs_url=None, redoc_url=None)
@@ -17,8 +18,14 @@ app.include_router(health_router)
 app.include_router(scoring_router)
 
 
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> PlainTextResponse:
+    return PlainTextResponse(render_metrics(), media_type="text/plain; version=0.0.4")
+
+
 @app.middleware("http")
 async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    started = timer()
     candidate = request.headers.get("X-Request-Id", "")
     try:
         request_id = str(UUID(candidate))
@@ -37,6 +44,7 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
         )
     else:
         response = await call_next(request)
+    record_request(request.method, response.status_code, started)
     response.headers["X-Request-Id"] = request_id
     return response
 

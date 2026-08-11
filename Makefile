@@ -1,4 +1,4 @@
-.PHONY: install contracts validate-spec validate-foundation validate-us1 validate-us2 validate-us3 validate-us4 validate acceptance smoke visual manifests images push-images openshift-deploy
+.PHONY: install contracts validate-spec validate-foundation validate-us1 validate-us2 validate-us3 validate-us4 validate acceptance smoke visual manifests images push-images openshift-deploy platform-discover platform-render platform-validate platform-smoke platform-docs
 
 install:
 	npm ci
@@ -61,7 +61,25 @@ images:
 	bash scripts/images/scan.sh
 
 push-images:
-	bash scripts/images/build.sh --push
+	bash scripts/images/build.sh
+	bash scripts/images/scan.sh
+	bash scripts/images/publish.sh
 
 openshift-deploy:
 	bash scripts/openshift/deploy.sh apply "$${OPENSHIFT_OVERLAY:-dev}"
+
+platform-discover:
+	bash scripts/platform/discover --context current --namespace "$${OPENSHIFT_NAMESPACE:-rh-ee-mpolo-dev}" --output "$${PLATFORM_PROFILE_OUTPUT:-build/platform/dev-profile.json}"
+
+platform-render:
+	bash scripts/platform/render --all --output-dir "$${PLATFORM_RENDER_DIR:-build/rendered}"
+
+platform-validate:
+	bash scripts/platform/validate --all --cluster-version "$${OPENSHIFT_VERSION:-4.21.21}" --evidence-dir "$${PLATFORM_EVIDENCE_DIR:-build/platform/evidence/static}"
+
+platform-smoke:
+	bash scripts/platform/smoke --environment "$${OPENSHIFT_ENVIRONMENT:-dev}" --namespace "$${OPENSHIFT_NAMESPACE:-rh-ee-mpolo-dev}" --fixture tests/fixtures/medium-risk-application.json --evidence "$${PLATFORM_SMOKE_EVIDENCE:-build/platform/evidence/dev/smoke.json}"
+
+platform-docs:
+	scripts/platform/generate-operations-doc --render-root "$${PLATFORM_RENDER_DIR:-build/rendered}" --cluster-profile "$${PLATFORM_PROFILE_OUTPUT:-build/platform/dev-profile.json}" --output docs/operations/openshift-deployment.md
+	scripts/platform/validate-operations-doc docs/operations/openshift-deployment.md

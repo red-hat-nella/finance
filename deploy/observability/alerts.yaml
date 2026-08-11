@@ -1,0 +1,17 @@
+apiVersion: platform.finance2/v1
+kind: AlertContract
+metadata: {name: alternative-credit-scoring}
+spec:
+  state: DECLARED
+  optionalResources: [ServiceMonitor, PrometheusRule]
+  prerequisite: approved monitoring APIs discovered
+  fallback: corporate scrape and alerting integration
+  alerts:
+    - {name: FrontendUnavailable, component: frontend, signal: HTTPS smoke failures, severity: critical}
+    - {name: IngestionDatabaseUnavailable, component: ingestion, signal: 'finance2_dependency_up{dependency="database"} == 0', severity: critical}
+    - {name: ScoringErrorRate, component: scoring, signal: 5xx rate or p95 latency above 500ms, severity: warning}
+    - {name: MigrationFailed, component: migrations, signal: Job failed or checksum mismatch, severity: critical}
+    - {name: RetentionLate, component: retention, signal: last success older than 26h or backlog increasing, severity: warning}
+    - {name: ReconcilerLate, component: reconciler, signal: last success older than 5m or stale attempts increasing, severity: warning}
+    - {name: PostgreSQLRecoveryStale, component: postgresql, signal: backup or isolated restore outside policy, severity: critical}
+    - {name: GitOpsDegraded, component: gitops, signal: OutOfSync or Degraded longer than 10m, severity: critical}

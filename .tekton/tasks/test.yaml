@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-test}
+spec:
+  params: [{name: toolbox-image, type: string}, {name: commit-sha, type: string}]
+  workspaces: [{name: source}]
+  steps:
+    - name: repository-tests
+      image: $(params.toolbox-image)
+      workingDir: $(workspaces.source.path)
+      env: [{name: GIT_COMMIT_SHA, value: $(params.commit-sha)}]
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        bash scripts/test/validate-pipeline.sh
+      computeResources: {requests: {cpu: 500m, memory: 1Gi}, limits: {cpu: "1", memory: 2Gi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

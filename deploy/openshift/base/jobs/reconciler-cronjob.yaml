@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reconciler
+  labels: {app.kubernetes.io/name: reconciler, app.kubernetes.io/part-of: alternative-credit-scoring}
+spec:
+  schedule: "*/1 * * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: reconciler, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}
+        spec:
+          serviceAccountName: reconciler
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: reconciler
+              image: quay.io/finance2/ingestion@sha256:2222222222222222222222222222222222222222222222222222222222222222
+              command: [node, dist/jobs/reconciler.js]
+              envFrom: [{configMapRef: {name: ingestion-config}}]
+              env: [{name: DATABASE_PASSWORD_FILE, value: /run/secrets/reconciler/database-password}]
+              resources: {requests: {cpu: 25m, memory: 64Mi}, limits: {cpu: 200m, memory: 192Mi}}
+              securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+              volumeMounts:
+                - {name: runtime-secrets, mountPath: /run/secrets/reconciler, readOnly: true}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: runtime-secrets
+              projected:
+                defaultMode: 256
+                sources:
+                  - secret:
+                      name: database-runtime
+                      items: [{key: database-password, path: database-password}]
+            - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

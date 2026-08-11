@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+NAMESPACE=""
+while (($#)); do
+  case "$1" in --namespace) NAMESPACE="$2"; shift 2 ;; *) echo "unknown argument: $1" >&2; exit 2 ;; esac
+done
+[[ "$NAMESPACE" == rh-ee-mpolo-dev ]] || { echo "persistence disruption is limited to rh-ee-mpolo-dev" >&2; exit 1; }
+[[ "${ALLOW_DISRUPTIVE_TEST:-false}" == true ]] || {
+  echo "persistence recreation: PENDING_VALIDATION (set ALLOW_DISRUPTIVE_TEST=true in an approved test window)"
+  exit 0
+}
+
+evidence="$ROOT/build/platform/evidence/dev/persistence-smoke.json"
+"$ROOT/scripts/platform/smoke" --environment dev --namespace "$NAMESPACE" --fixture "$ROOT/tests/fixtures/medium-risk-application.json" --evidence "$evidence"
+evaluation_id="$(jq -r '.evaluationId' "$evidence")"
+[[ "$evaluation_id" =~ ^[0-9a-f-]{36}$ ]]
+for component in frontend ingestion scoring; do
+  ready="$(oc -n "$NAMESPACE" get deployment "$component" -o jsonpath='{.status.readyReplicas}')"
+  [[ "$ready" == 2 ]] || { echo "$component does not have two ready replicas" >&2; exit 1; }
+done
+oc -n "$NAMESPACE" delete pod -l app.kubernetes.io/name=frontend --wait=false
+oc -n "$NAMESPACE" delete pod -l app.kubernetes.io/name=ingestion --wait=false
+oc -n "$NAMESPACE" delete pod -l app.kubernetes.io/name=scoring --wait=false
+for component in frontend ingestion scoring; do oc -n "$NAMESPACE" rollout status "deployment/$component" --timeout=5m; done
+
+host="$(oc -n "$NAMESPACE" get route frontend -o jsonpath='{.spec.host}')"
+headers=()
+if [[ -n "${SMOKE_AUTH_HEADER_FILE:-}" ]]; then headers+=(-H "@$SMOKE_AUTH_HEADER_FILE"); fi
+curl -fsS "https://$host/api/v1/evaluations/$evaluation_id" "${headers[@]}" | jq -e '.score==634' >/dev/null
+echo "persistence after stateless pod recreation: PASS"

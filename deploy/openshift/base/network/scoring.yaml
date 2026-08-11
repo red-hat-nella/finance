@@ -1,0 +1,9 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: scoring-from-ingestion, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: scoring}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}]
+      ports: [{protocol: TCP, port: 8080}]

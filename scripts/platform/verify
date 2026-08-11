@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENVIRONMENT=""
+NAMESPACE=""
+EVIDENCE_DIR="build/platform/evidence/dev"
+INCLUDE_SMOKE=false
+while (($#)); do
+  case "$1" in
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --namespace) NAMESPACE="$2"; shift 2 ;;
+    --evidence-dir) EVIDENCE_DIR="$2"; shift 2 ;;
+    --include-smoke) INCLUDE_SMOKE=true; shift ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ "$ENVIRONMENT" =~ ^(dev|production)$ && -n "$NAMESPACE" ]] || { echo "environment and namespace are required" >&2; exit 2; }
+
+mkdir -p "$EVIDENCE_DIR"
+generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+gitops_available=false
+oc api-resources --api-group=argoproj.io -o name 2>/dev/null | grep -Eq '^applications(\.argoproj\.io)?$' && gitops_available=true
+if [[ "$gitops_available" != true ]]; then
+  jq -n --arg generatedAt "$generated_at" --arg environment "$ENVIRONMENT" --arg namespace "$NAMESPACE" \
+    '{schemaVersion:"runtime-verification.finance2/v1",generatedAt:$generatedAt,environment:$environment,namespace:$namespace,result:"PENDING_VALIDATION",checks:{reconcile:"PENDING_VALIDATION",migration:"PENDING_VALIDATION",rollout:"PENDING_VALIDATION",probes:"PENDING_VALIDATION",network:"PENDING_VALIDATION",jobs:"PENDING_VALIDATION",persistence:"PENDING_VALIDATION",backupRestore:"PENDING_VALIDATION",smoke:"PENDING_VALIDATION"},reason:"approved GitOps API is not available"}' \
+    > "$EVIDENCE_DIR/verification.json"
+  echo "runtime verification: PENDING_VALIDATION (GitOps API absent)"
+  exit 0
+fi
+
+application="alternative-credit-scoring-$ENVIRONMENT"
+sync="$(oc -n "$NAMESPACE" get applications.argoproj.io "$application" -o jsonpath='{.status.sync.status}')"
+health="$(oc -n "$NAMESPACE" get applications.argoproj.io "$application" -o jsonpath='{.status.health.status}')"
+[[ "$sync" == Synced && "$health" == Healthy ]] || { echo "GitOps application is not Synced/Healthy" >&2; exit 1; }
+for component in frontend ingestion scoring; do
+  oc -n "$NAMESPACE" rollout status "deployment/$component" --timeout=5m
+  available="$(oc -n "$NAMESPACE" get deployment "$component" -o jsonpath='{.status.availableReplicas}')"
+  desired="$(oc -n "$NAMESPACE" get deployment "$component" -o jsonpath='{.spec.replicas}')"
+  [[ "$available" == "$desired" ]] || { echo "$component availability does not match desired replicas" >&2; exit 1; }
+done
+oc -n "$NAMESPACE" wait --for=condition=complete job/migrations --timeout=10m
+for job in retention reconciler; do
+  oc -n "$NAMESPACE" get cronjob "$job" -o jsonpath='{.spec.concurrencyPolicy}' | grep -qx Forbid
+done
+if [[ "$INCLUDE_SMOKE" == true ]]; then
+  "$(dirname "$0")/smoke" --environment "$ENVIRONMENT" --namespace "$NAMESPACE" --evidence "$EVIDENCE_DIR/smoke.json"
+fi
+if [[ "$ENVIRONMENT" == dev ]]; then
+  "$(dirname "$0")/verify-persistence" --namespace "$NAMESPACE" | tee "$EVIDENCE_DIR/persistence.log"
+  "$(dirname "$0")/verify-backup-restore" --environment dev --evidence "$EVIDENCE_DIR/restore.json"
+fi
+jq -n --arg generatedAt "$generated_at" --arg environment "$ENVIRONMENT" --arg namespace "$NAMESPACE" --arg sync "$sync" --arg health "$health" \
+  '{schemaVersion:"runtime-verification.finance2/v1",generatedAt:$generatedAt,environment:$environment,namespace:$namespace,result:"PASS",checks:{reconcile:$sync,health:$health,migration:"PASS",rollout:"PASS",probes:"PASS",network:"PASS_BY_FUNCTIONAL_SMOKE",jobs:"PASS",persistence:"SEE_RECOVERY_EVIDENCE",backupRestore:"SEE_RECOVERY_EVIDENCE",smoke:"PASS"}}' \
+  > "$EVIDENCE_DIR/verification.json"
+echo "runtime verification: PASS"

@@ -3,12 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REGISTRY="${IMAGE_REGISTRY:-localhost/alternative-credit-scoring}"
-TAG="${IMAGE_TAG:-1.0.0}"
+TAG="${IMAGE_TAG:-$(git -C "$ROOT" rev-parse HEAD)}"
 OUT="${IMAGE_SCAN_OUTPUT:-$ROOT/build/security}"
 SYFT="docker.io/anchore/syft@sha256:392b65f29a410d2c1294d347bb3ad6f37608345ab6e7b43d2df03ea18bd6f5b0"
 TRIVY="docker.io/aquasec/trivy@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c"
 mkdir -p "$OUT"
 mkdir -p "$OUT/trivy-cache"
+[[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "IMAGE_TAG must be the full commit SHA" >&2; exit 2; }
 
 for component in frontend ingestion scoring; do
   image="$REGISTRY/$component:$TAG"

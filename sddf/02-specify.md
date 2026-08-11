@@ -88,3 +88,19 @@ Criterios de aceptacion que siempre deben quedar cubiertos
 - El sistema puede volver a una version saludable sin repetir manualmente el despliegue.
 - La ausencia temporal de acceso al cluster no impide que el flujo SDD produzca una especificacion completa.
 - La entrega incluye documentacion verificable de lo creado: cluster o contexto, namespaces, workloads y pods esperados, Services, Routes, URLs, persistencia, servicios de datos, Jobs, identidades y estado del despliegue, sin revelar secretos.
+
+Requisitos para una demostracion acelerada
+
+- Si el producto admite un modo de autenticacion de desarrollo ya implementado, la
+  especificacion puede permitirlo solo en un ambiente de prueba aislado. No se debe
+  inventar un bypass nuevo ni trasladarlo a staging o produccion.
+- La ausencia de GitOps, OIDC, backup u otra capacidad opcional no debe ocultarse:
+  cada una se clasifica como `PENDING_VALIDATION` y se declara que funcionalidades
+  quedan deshabilitadas o fuera del criterio de terminado completo.
+- El criterio minimo observable de una demo desplegada exige workloads saludables,
+  unica Route externa con TLS, datos inicializados mediante migracion separada y un
+  smoke test sintetico del flujo principal. Que la pagina cargue no es suficiente.
+- La especificacion debe distinguir `APP_AVAILABLE_FOR_TEST` de
+  `PLATFORM_DELIVERY_COMPLETE`; el primero puede alcanzarse mediante una desviacion
+  temporal, mientras el segundo conserva todos los criterios de GitOps, backup,
+  rollback y promocion.

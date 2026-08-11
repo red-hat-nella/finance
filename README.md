@@ -27,7 +27,11 @@ scoring (API interna)     PostgreSQL
 | `db/migrations/` | Esquema PostgreSQL versionado e idempotente |
 | `deploy/local/` | Topologia Docker Compose y Podman Compose |
 | `deploy/openshift/` | Base y overlays Kustomize para OpenShift |
+| `.tekton/` | Tasks, Pipeline y disparadores Pipelines as Code |
+| `deploy/gitops/` | Bootstrap namespace-scoped y estado GitOps declarado |
+| `scripts/platform/` | Descubrimiento, render, validación, verificación y recuperación |
 | `specs/001-alternative-credit-scoring/` | Constitucion, spec, plan, contratos, tareas y evidencia |
+| `specs/002-openshift-runtime-requirements/` | Diseño y contratos de operación OpenShift |
 
 ## Requisitos
 
@@ -93,17 +97,19 @@ valores fuera de la demo.
 
 ### Secretos
 
-Los servicios productivos exigen secretos montados como archivos. El Secret
-OpenShift `scoring-secrets` debe contener exactamente:
+Los servicios productivos exigen referencias separadas montadas como archivos. El
+contrato completo vive en
+`specs/002-openshift-runtime-requirements/contracts/secret-references.md`:
 
 | Key | Consumidor |
 |---|---|
-| `database-admin-password` | Job de migraciones |
-| `database-password` | ingestion y reconciler |
-| `database-retention-password` | migraciones y retention |
-| `pii-encryption-key` | ingestion; 32 bytes aleatorios |
-| `pii-hmac-key` | ingestion; 32 bytes aleatorios e independientes |
-| `scoring-service-token` | ingestion y scoring; minimo 32 caracteres |
+| `ingestion-runtime` | Solo password runtime, claves PII actuales y token de scoring |
+| `scoring-runtime` | Solo token de scoring |
+| `database-migrator` | Password del schema owner acotado; no superusuario |
+| `database-retention` | Password exclusivo de retención |
+| `database-runtime` | Password runtime para ingestion/reconciler y PostgreSQL dev |
+| `database-tls` | CA para PostgreSQL externo con `verify-full` |
+| `pii-keyring` | Referencias versionadas para rotación/lectura histórica |
 
 Nunca ponga esos valores en `.env`, ConfigMaps, manifiestos, prompts de Spec Kit,
 logs o pull requests.
@@ -182,89 +188,40 @@ make manifests
 El quickstart detallado de API, fixtures, fallos y verificacion visual esta en
 [`specs/001-alternative-credit-scoring/quickstart.md`](specs/001-alternative-credit-scoring/quickstart.md).
 
-## Despliegue imperativo de la demo en OpenShift
+## Entrega declarativa en OpenShift
 
-Este flujo existe para validación local, bootstrap o demostraciones aisladas. NO es el
-mecanismo de despliegue ordinario exigido por la constitución: los ambientes compartidos
-DEBEN reconciliarse desde GitOps con imágenes inmutables referenciadas por digest.
+El destino de desarrollo confirmado es `rh-ee-mpolo-dev`. No se crea ni elimina el
+proyecto compartido y solo se administran recursos etiquetados para esta aplicación.
+El overlay productivo permanece parametrizado y no contiene PostgreSQL local.
 
-### 1. Preparar proyecto y registro
-
-```bash
-oc login https://api.CLUSTER:6443
-oc get namespace alternative-scoring-dev >/dev/null 2>&1 || \
-  oc create namespace alternative-scoring-dev
-
-REGISTRY="$(oc registry info)"
-podman login -u "$(oc whoami)" -p "$(oc whoami -t)" "$REGISTRY"
-```
-
-Si el registro integrado no tiene una Route accesible desde su equipo, un
-administrador debe exponerlo o se debe usar Red Hat Quay y ajustar `newName` en el
-overlay.
-
-### 2. Construir, escanear y publicar imagenes
+La validación estática funciona sin acceso al clúster:
 
 ```bash
-IMAGE_REGISTRY="$REGISTRY/alternative-scoring-dev" \
-IMAGE_TAG=1.0.0 ./scripts/images/build.sh
-
-IMAGE_REGISTRY="$REGISTRY/alternative-scoring-dev" \
-IMAGE_TAG=1.0.0 ./scripts/images/scan.sh
-
-IMAGE_REGISTRY="$REGISTRY/alternative-scoring-dev" \
-IMAGE_TAG=1.0.0 ./scripts/images/build.sh --push
+scripts/platform/render --all --output-dir build/rendered
+scripts/platform/validate --all --cluster-version 4.21.21 \
+  --evidence-dir build/platform/evidence/static
 ```
 
-El overlay `dev` referencia esas imagenes por el DNS interno del registro. Cambie el
-tag en el overlay cuando publique otra version; no use `latest`.
-
-### 3. Configurar identidad y secretos
-
-Antes del despliegue, sustituya los dominios `identity.example.test` mediante un
-overlay propio o parches Kustomize con los valores de Red Hat build of Keycloak,
-Red Hat Single Sign-On u otro proveedor OIDC:
-
-- `frontend-config.OIDC_ISSUER` y `OIDC_CLIENT_ID`;
-- `ingestion-config.AUTH_ISSUER`, `AUTH_JWKS_URL` y `AUTH_AUDIENCE`.
-
-Para una demo, puede cargar los secretos aleatorios generados localmente:
+El descubrimiento y preflight son de solo lectura y excluyen Secrets:
 
 ```bash
-./scripts/dev/init-local-secrets.sh
-./scripts/openshift/create-secrets.sh alternative-scoring-dev
+scripts/platform/discover --context current --namespace rh-ee-mpolo-dev \
+  --output build/platform/dev-profile.json
+scripts/platform/bootstrap --profile build/platform/dev-profile.json \
+  --preflight-only
 ```
 
-En un entorno compartido o productivo, cree `scoring-secrets` desde el gestor de
-secretos aprobado por la organizacion. No use el generador local ni comprometa un
-`Secret` con `stringData` real.
+El flujo ordinario está definido en `.tekton/pipeline.yaml`: inspecciona, prueba,
+analiza, construye secuencialmente las tres imágenes una sola vez, publica los mismos
+artefactos, abre una propuesta GitOps, verifica y reporta. Los overlays solo aceptan
+digests. Ninguna Task aplica directamente los workloads ni escribe en una rama
+protegida.
 
-### 4. Renderizar, validar y aplicar
-
-```bash
-./scripts/openshift/deploy.sh render dev > /tmp/alternative-scoring-dev.yaml
-./scripts/openshift/deploy.sh dry-run dev
-./scripts/openshift/deploy.sh diff dev || true
-./scripts/openshift/deploy.sh apply dev
-```
-
-`apply` crea el namespace si hace falta, aplica recursos base, espera PostgreSQL,
-ejecuta las migraciones como gate y solo despues despliega scoring, ingestion y
-frontend. Verifique:
-
-```bash
-oc -n alternative-scoring-dev get pods,deploy,svc,route,jobs,cronjobs
-oc -n alternative-scoring-dev get route frontend \
-  -o jsonpath='https://{.spec.host}{"\n"}'
-oc -n alternative-scoring-dev rollout status deploy/frontend
-oc -n alternative-scoring-dev rollout status deploy/ingestion
-oc -n alternative-scoring-dev rollout status deploy/scoring
-```
-
-El overlay `production` expresa estado deseado no confirmado: elimina PostgreSQL de demo y usa el `ExternalName`
-`postgresql.production.internal`. Antes de usarlo se deben cambiar el registry, host
-de base de datos, TLS, OIDC, namespaces, recursos y egress de acuerdo con el entorno
-real.
+`deploy/gitops/applications/` contiene el estado declarado. En el clúster observado la
+API `argoproj.io/Application` no está instalada; por eso reconciliación, rollout y
+smoke dinámicos permanecen `PENDING_VALIDATION` hasta que la organización habilite
+OpenShift GitOps o un reconciliador equivalente. No se instala ningún operador desde
+este repositorio.
 
 ## De Spec Driven Development a despliegue automatico
 
@@ -344,9 +301,9 @@ el cliente tenga que aprender los detalles del cluster.
 | Estado | Recursos / capacidades |
 |---|---|
 | Deseado y versionado | Imágenes, gates, manifiestos Kustomize, configuración, referencias de secretos y overlays OpenShift |
-| Confirmado en cluster | Ninguno en esta documentación; no se realizó inspección autorizada del cluster |
-| Pendiente de validación | Versión OpenShift, operadores, StorageClasses, registry, ingress, gestor de secretos, dominios, namespaces y políticas corporativas |
-| Pendiente de implementación | `.tekton/`, publicación por digest, actualización GitOps, `Application` de Argo CD o equivalente, promoción, reconciliación y rollback automatizados |
+| Confirmado en cluster | OpenShift 4.21.21, proyecto `rh-ee-mpolo-dev`, Pipelines 1.23.1, API Tekton v1, StorageClass `gp3` y cuotas suficientes |
+| Declarado y validado estáticamente | Base/componentes/overlays Kustomize, Pipeline y Tasks Tekton, Applications GitOps, políticas, perfiles, evidencia offline y rollback propuesto |
+| Pendiente de validación | Controlador/repo GitOps aprobado, Pipelines as Code operativo, registro publicable, OIDC, dominio, DB/CA/CIDR/backup productivos y aprobación de producción |
 
 El flujo imperativo anterior no demuestra reconciliación GitOps ni constituye una
 entrega productiva terminada. La automatización empresarial debe incorporar los

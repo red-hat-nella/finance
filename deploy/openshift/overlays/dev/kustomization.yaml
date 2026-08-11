@@ -1,23 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: alternative-scoring-dev
-resources: [../../base]
+namespace: rh-ee-mpolo-dev
+resources: [../../base, ../../components/postgres-dev, patches/oidc-egress.yaml]
 images:
-  - name: image-registry.openshift-image-registry.svc:5000/alternative-scoring/frontend
-    newName: image-registry.openshift-image-registry.svc:5000/alternative-scoring-dev/frontend
-    newTag: 1.0.0
-  - name: image-registry.openshift-image-registry.svc:5000/alternative-scoring/ingestion
-    newName: image-registry.openshift-image-registry.svc:5000/alternative-scoring-dev/ingestion
-    newTag: 1.0.0
-  - name: image-registry.openshift-image-registry.svc:5000/alternative-scoring/scoring
-    newName: image-registry.openshift-image-registry.svc:5000/alternative-scoring-dev/scoring
-    newTag: 1.0.0
+  - name: quay.io/finance2/frontend
+    newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/frontend
+    digest: sha256:e70b81258d722616b2a0debf6c103b972fb48261bd6259c8beb73d61cf981b15
+  - name: quay.io/finance2/ingestion
+    newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/ingestion
+    digest: sha256:308ac0e0c363060a4b621ed34dcc236c36ce6c4bf6476e53cca85d9507e0ced7
+  - name: quay.io/finance2/scoring
+    newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/scoring
+    digest: sha256:28e310ee6fa8040f5b75f65d3e38adea40b2be4e5b1982f79217a684c5e42fa9
 patches:
-  - target: {kind: ConfigMap, name: ingestion-config}
-    patch: |-
-      apiVersion: v1
-      kind: ConfigMap
-      metadata: {name: ingestion-config}
-      data:
-        NODE_ENV: development
-        DATABASE_SSL_MODE: disable
+  - path: patches/ingestion-config.yaml
+  - path: patches/fast-test-deployment.yaml

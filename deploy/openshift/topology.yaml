@@ -1,0 +1,23 @@
+apiVersion: platform.finance2/v1
+kind: LogicalTopology
+metadata:
+  name: alternative-credit-scoring
+spec:
+  components:
+    - {name: frontend, classification: INFERRED, evidence: "frontend/Dockerfile, frontend/nginx.conf", command: /opt/app-root/bin/container-entrypoint.sh, workload: Deployment, port: 8080, protocol: HTTP, exposure: external-route-tls, state: stateless, dependencies: [ingestion, oidc]}
+    - {name: ingestion, classification: INFERRED, evidence: services/ingestion/src/server.ts, command: "node dist/server.js", workload: Deployment, port: 8080, protocol: HTTP, exposure: internal-service, state: stateless-runtime, dependencies: [postgresql, scoring, oidc]}
+    - {name: scoring, classification: INFERRED, evidence: "services/scoring/Dockerfile, services/scoring/app/main.py", command: "uvicorn app.main:app --host 0.0.0.0 --port 8080 --no-access-log", workload: Deployment, port: 8080, protocol: HTTP, exposure: internal-service, state: stateless, dependencies: []}
+    - {name: migrations, classification: INFERRED, evidence: "services/ingestion/src/jobs/migrate.ts, db/migrations", command: "node dist/jobs/migrate.js", workload: Job, protocol: PostgreSQL, exposure: none, state: finite-schema-change, dependencies: [postgresql]}
+    - {name: retention, classification: INFERRED, evidence: services/ingestion/src/jobs/retention.ts, command: "node dist/cli.js retention --execute", workload: CronJob, schedule: "15 2 * * *", protocol: PostgreSQL, exposure: none, state: finite-scheduled, dependencies: [postgresql]}
+    - {name: reconciler, classification: INFERRED, evidence: services/ingestion/src/jobs/reconciler.ts, command: "node dist/jobs/reconciler.js", workload: CronJob, schedule: "*/1 * * * *", protocol: PostgreSQL, exposure: none, state: finite-scheduled, dependencies: [postgresql]}
+    - {name: postgresql, classification: INFERRED, evidence: "db/migrations, deploy/local/compose.yaml", workload: StatefulSet-dev-or-managed-production, port: 5432, protocol: PostgreSQL, exposure: internal-service, state: durable, dependencies: [persistent-storage, backup-target]}
+    - {name: oidc, classification: EXTERNAL_REQUIRED, evidence: "frontend/public/runtime-config.template.json, services/ingestion/src/infrastructure/auth/jwt-verifier.ts", workload: external-service, port: 443, protocol: HTTPS, exposure: controlled-egress, state: externally-managed, dependencies: []}
+  flows:
+    - browser -> route/frontend:8080
+    - frontend -> ingestion:8080
+    - ingestion -> scoring:8080
+    - ingestion -> postgresql:5432
+    - ingestion -> oidc:443
+    - migrations -> postgresql:5432
+    - retention -> postgresql:5432
+    - reconciler -> postgresql:5432

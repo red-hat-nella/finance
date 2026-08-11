@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-backup-to-target
+  annotations: {platform.finance2/state: PENDING_VALIDATION, platform.finance2/input: replace TEST-NET CIDR with approved backup target}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [postgres-backup, postgres-restore-test]}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 192.0.2.0/32}}]
+      ports: [{protocol: TCP, port: 443}]

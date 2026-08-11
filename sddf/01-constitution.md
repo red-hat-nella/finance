@@ -64,3 +64,22 @@ Reglas de gobierno para el flujo SDD
 - Una decision inferida debe registrarse con su evidencia y default. Un dato descubierto debe registrar su fuente sin copiar informacion sensible.
 - Si falta un dato externo realmente bloqueante, el LLM debe completar todo el trabajo independiente de ese dato y emitir `PLATFORM_INPUT_REQUIRED` con solo los campos imprescindibles, su motivo y el canal seguro esperado.
 - Nunca se debe convertir una preferencia no expresada en una pregunta bloqueante. Ante opciones equivalentes, el LLM elige la alternativa mas simple, soportada, reversible y coherente con el proyecto.
+
+Excepcion controlada para pruebas efimeras sin GitOps
+
+- Si el destino es inequivocamente de prueba, el usuario autoriza expresamente la
+  aplicacion directa y el cluster no ofrece un reconciliador GitOps instalable con
+  los permisos disponibles, el LLM puede ejecutar una entrega temporal desde los
+  mismos manifiestos declarativos versionados.
+- La excepcion no convierte el estado observado en operacion GitOps completada. Debe
+  registrarse como `DIRECT_APPLY_DEVIATION`, con ambiente, motivo, alcance, commit,
+  digests, comandos automatizados, resultado del smoke test y prerrequisito pendiente.
+- La excepcion nunca autoriza credenciales en prompts, tags mutables, privilegios,
+  exposicion adicional, saltarse migraciones ni afirmar backup/rollback no probados.
+- Solo se despliega el subconjunto seguro y funcional. Capacidades sin dependencia
+  disponible, como backup, OIDC corporativo o tareas programadas incompletas, deben
+  deshabilitarse declarativamente en un overlay de prueba y quedar documentadas.
+- La secuencia minima es `render -> validacion server-side -> datos -> migracion ->
+  workloads -> rollout -> Route -> smoke`. Un fallo detiene la fase siguiente.
+- El cierre de la desviacion consiste en instalar o seleccionar GitOps, importar el
+  mismo estado deseado y verificar que la reconciliacion no produce diferencias.

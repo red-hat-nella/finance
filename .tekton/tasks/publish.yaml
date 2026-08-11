@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-publish}
+spec:
+  params:
+    - {name: publisher-image, type: string}
+    - {name: registry, type: string}
+    - {name: commit-sha, type: string}
+    - {name: frontend-archive, type: string}
+    - {name: ingestion-archive, type: string}
+    - {name: scoring-archive, type: string}
+  workspaces: [{name: artifacts}]
+  results:
+    - {name: frontend-digest, type: string}
+    - {name: ingestion-digest, type: string}
+    - {name: scoring-digest, type: string}
+  steps:
+    - name: copy-verified-archives
+      image: $(params.publisher-image)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        publish() {
+          component="$1"; archive="$2"; result="$3"
+          destination="$(params.registry)/$component:$(params.commit-sha)"
+          skopeo copy --all "oci-archive:$archive" "docker://$destination" >/dev/null
+          digest="$(skopeo inspect --format '{{.Digest}}' "docker://$destination")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s' "$digest" > "$result"
+        }
+        publish frontend "$(params.frontend-archive)" "$(results.frontend-digest.path)"
+        publish ingestion "$(params.ingestion-archive)" "$(results.ingestion-digest.path)"
+        publish scoring "$(params.scoring-archive)" "$(results.scoring-digest.path)"
+      computeResources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 512Mi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

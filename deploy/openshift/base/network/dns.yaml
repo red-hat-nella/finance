@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-cluster-dns, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    # OpenShift DNS commonly runs with host networking, so a namespaceSelector
+    # does not reliably match the post-DNAT endpoint on every CNI. Limit the
+    # portable fallback by protocol and port instead of guessing a cluster IP.
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+        - {protocol: UDP, port: 5353}
+        - {protocol: TCP, port: 5353}

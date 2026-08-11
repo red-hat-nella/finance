@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alternative-credit-scoring-production
+  annotations: {platform.finance2/state: PENDING_VALIDATION, platform.finance2/approval: PLATFORM_INPUT_REQUIRED}
+spec:
+  project: default
+  source:
+    repoURL: PLATFORM_INPUT_REQUIRED
+    targetRevision: PLATFORM_INPUT_REQUIRED
+    path: deploy/openshift/overlays/production
+  destination:
+    server: PLATFORM_INPUT_REQUIRED
+    namespace: production-pending
+  syncPolicy:
+    syncOptions: [CreateNamespace=false, RespectIgnoreDifferences=true]

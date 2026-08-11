@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runtime-and-jobs-to-external-database
+  labels: {app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations:
+    platform.finance2/state: PENDING_VALIDATION
+    platform.finance2/input: replace TEST-NET CIDR with authorized database CIDR before promotion
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [ingestion, migrations, retention, reconciler]}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 203.0.113.0/32}}]
+      ports: [{protocol: TCP, port: 5432}]

@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata: {name: finance2-secure}
+spec:
+  params: [{name: security-image, type: string}]
+  workspaces: [{name: source}]
+  results: [{name: security-evidence, type: string}]
+  steps:
+    - name: source-and-dependencies
+      image: $(params.security-image)
+      workingDir: $(workspaces.source.path)
+      env: [{name: IMAGE_SCAN_OUTPUT, value: $(workspaces.source.path)/pipeline-artifacts/security}]
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        scripts/security/verify-no-secrets.sh
+        scripts/security/dependency-audit.sh
+        printf '%s' "$(workspaces.source.path)/pipeline-artifacts/security" > "$(results.security-evidence.path)"
+      computeResources: {requests: {cpu: 250m, memory: 512Mi}, limits: {cpu: "1", memory: 2Gi}}
+      securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

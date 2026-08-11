@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retention
+  labels: {app.kubernetes.io/name: retention, app.kubernetes.io/part-of: alternative-credit-scoring}
+spec:
+  schedule: "15 2 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: retention, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}
+        spec:
+          serviceAccountName: retention
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: retention
+              image: quay.io/finance2/ingestion@sha256:2222222222222222222222222222222222222222222222222222222222222222
+              command: [node, dist/cli.js, retention, --execute]
+              envFrom: [{configMapRef: {name: ingestion-config}}]
+              env:
+                - {name: DATABASE_USER, value: scoring_retention}
+                - {name: DATABASE_PASSWORD_FILE, value: /run/secrets/retention/database-retention-password}
+                - {name: RETENTION_BATCH_SIZE, value: "500"}
+              resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 250m, memory: 256Mi}}
+              securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+              volumeMounts:
+                - {name: runtime-secrets, mountPath: /run/secrets/retention, readOnly: true}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: runtime-secrets
+              projected:
+                defaultMode: 256
+                sources:
+                  - secret:
+                      name: database-retention
+                      items: [{key: database-retention-password, path: database-retention-password}]
+            - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

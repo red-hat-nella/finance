@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: finance2-release-
+  annotations:
+    pipelinesascode.tekton.dev/on-event: "[push]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main]"
+spec:
+  pipelineRef: {name: finance2-release}
+  taskRunTemplate: {serviceAccountName: pipeline-build}
+  taskRunSpecs:
+    - {pipelineTaskName: verify, serviceAccountName: platform-reader}
+  params:
+    - {name: delivery-mode, value: release}
+    - {name: commit-sha, value: "{{revision}}"}
+    - {name: environment, value: dev}
+    - {name: namespace, value: rh-ee-mpolo-dev}
+    - {name: registry, value: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev}
+    - {name: gitops-repository, value: PLATFORM_INPUT_REQUIRED}
+    - {name: toolbox-image, value: PLATFORM_INPUT_REQUIRED_BY_DIGEST}
+    - {name: security-image, value: PLATFORM_INPUT_REQUIRED_BY_DIGEST}
+    - {name: builder-image, value: PLATFORM_INPUT_REQUIRED_BY_DIGEST}
+    - {name: publisher-image, value: PLATFORM_INPUT_REQUIRED_BY_DIGEST}
+  workspaces:
+    - name: source
+      persistentVolumeClaim: {claimName: "{{repo_name}}-source"}
+    - name: artifacts
+      volumeClaimTemplate: {spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 10Gi}}}}
+    - {name: gitops, emptyDir: {}}
+    - {name: git-auth, secret: {secretName: gitops-repository}}

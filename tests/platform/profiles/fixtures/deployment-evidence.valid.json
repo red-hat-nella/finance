@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "deployment-evidence.finance2/v1",
+  "releaseId": "fixture-release",
+  "commitSha": "0123456789abcdef0123456789abcdef01234567",
+  "pipelineRunRef": null,
+  "environment": "dev",
+  "namespace": "rh-ee-mpolo-dev",
+  "gitopsRevision": "0123456789abcdef0123456789abcdef01234567",
+  "syncStatus": "PENDING",
+  "healthStatus": "UNKNOWN",
+  "images": {
+    "frontend": {"repository":"registry.invalid/finance2/frontend","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sbomRef":"build/sbom/frontend.json","scanRef":"build/scan/frontend.json"},
+    "ingestion": {"repository":"registry.invalid/finance2/ingestion","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","sbomRef":"build/sbom/ingestion.json","scanRef":"build/scan/ingestion.json"},
+    "scoring": {"repository":"registry.invalid/finance2/scoring","digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","sbomRef":"build/sbom/scoring.json","scanRef":"build/scan/scoring.json"}
+  },
+  "checks": [{"type":"render","result":"PASS","sourceRef":"tests/platform/render","observedAt":"2026-08-09T00:00:00Z","summary":"fixtures rendered and validated"}],
+  "generatedAt": "2026-08-09T00:00:00Z"
+}

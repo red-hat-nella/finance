@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+
+let documentArg = "docs/operations/openshift-deployment.md";
+let renderRoot = "build/rendered";
+for (let i = 2; i < process.argv.length; i += 1) {
+  if (process.argv[i] === "--render-root") renderRoot = process.argv[++i];
+  else documentArg = process.argv[i];
+}
+const file = path.resolve(documentArg);
+const text = fs.readFileSync(file, "utf8");
+const required = ["Resumen y arquitectura", "Contextos y ambientes", "Inventario dev", "Inventario production", "Datos y almacenamiento", "Red autorizada", "Identidades, configuración y secretos", "CI, GitOps y promoción", "Observabilidad", "Procedimientos seguros", "PLATFORM_INPUT_REQUIRED", "Procedencia"];
+for (const heading of required) if (!text.includes(heading)) throw new Error(`missing operations section: ${heading}`);
+for (const line of text.split(/\r?\n/).filter((line) => line.startsWith("| ") && !line.includes("---"))) {
+  if (!line.includes("Estado") && !/\b(DECLARED|OBSERVED|PENDING_VALIDATION)\b/.test(line)) throw new Error(`table row lacks provenance: ${line}`);
+}
+const forbidden = [
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i,
+  /\b(?:token|password|contraseña)\s*[:=]\s*[^\s|`]+/i,
+  /https?:\/\/[^\s/:]+:[^\s/@]+@/i,
+  /\bapiVersion:\s*v1\s+[\s\S]{0,200}\bkind:\s*Secret\b/i,
+  /\b(?:documentNumber|fullName|phone|email)\s*[:=]\s*[^\s|]+/i,
+];
+for (const pattern of forbidden) if (pattern.test(text)) throw new Error(`sensitive content matched ${pattern}`);
+if (/pod\/[a-z0-9-]+-[a-z0-9]{5,10}\b/.test(text)) throw new Error("ephemeral pod name treated as stable identity");
+const generated = text.match(/^> Generado: (.+?)  $/m)?.[1];
+if (!generated || Number.isNaN(Date.parse(generated))) throw new Error("missing generation timestamp");
+const maxAge = Number(process.env.OPERATIONS_DOC_MAX_AGE_HOURS ?? 24) * 3_600_000;
+if (Date.now() - Date.parse(generated) > maxAge) throw new Error("operations document is stale");
+const manifests = ["dev", "production"].map((env) => fs.readFileSync(path.resolve(renderRoot, env, "manifests.yaml"), "utf8"));
+const expected = crypto.createHash("sha256").update(manifests.join("\n---\n")).digest("hex");
+if (!text.includes(`sha256:${expected}`)) throw new Error("operations document is out of sync with rendered manifests");
+process.stdout.write(`operations document valid: ${file}\n`);

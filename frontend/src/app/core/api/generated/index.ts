@@ -4,1344 +4,1396 @@
  */
 
 export interface paths {
-  '/health/live': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Confirma que el proceso está vivo */
+        get: operations["getPublicLiveness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Confirma que el proceso está vivo */
-    get: operations['getPublicLiveness'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/health/ready': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Confirma que la API puede recibir tráfico */
+        get: operations["getPublicReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Confirma que la API puede recibir tráfico */
-    get: operations['getPublicReadiness'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/applications': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea una solicitud en borrador
+         * @description Requiere Idempotency-Key UUID. La misma clave y el mismo cuerpo retornan el mismo recurso y status original con Idempotency-Replayed true. Una clave ya usada con otro cuerpo retorna 409. Si existe un borrador del mismo documento para el analista, retorna 409 con el public ID del borrador solo porque el actor ya está autorizado sobre él.
+         */
+        post: operations["createApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Crea una solicitud en borrador
-     * @description Requiere Idempotency-Key UUID. La misma clave y el mismo cuerpo retornan el mismo recurso y status original con Idempotency-Replayed true. Una clave ya usada con otro cuerpo retorna 409. Si existe un borrador del mismo documento para el analista, retorna 409 con el public ID del borrador solo porque el actor ya está autorizado sobre él.
-     */
-    post: operations['createApplication'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/applications/{applicationId}': {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-      };
-      path: {
-        applicationId: components['parameters']['ApplicationId'];
-      };
-      cookie?: never;
+    "/api/v1/applications/{applicationId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                applicationId: components["parameters"]["ApplicationId"];
+            };
+            cookie?: never;
+        };
+        /** Recupera el borrador o revisión autorizada */
+        get: operations["getApplication"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Guarda cambios en un borrador
+         * @description If-Match contiene el ETag recibido en la lectura anterior. Solo un borrador puede editarse. Los campos omitidos no cambian; los objetos presentes se validan completos. Un resultado previo nunca se modifica: corregir un estado terminal crea primero una revisión nueva mediante la misma operación y la respuesta incrementa revisionNumber.
+         */
+        patch: operations["updateApplicationDraft"];
+        trace?: never;
     };
-    /** Recupera el borrador o revisión autorizada */
-    get: operations['getApplication'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /**
-     * Guarda cambios en un borrador
-     * @description If-Match contiene el ETag recibido en la lectura anterior. Solo un borrador puede editarse. Los campos omitidos no cambian; los objetos presentes se validan completos. Un resultado previo nunca se modifica: corregir un estado terminal crea primero una revisión nueva mediante la misma operación y la respuesta incrementa revisionNumber.
-     */
-    patch: operations['updateApplicationDraft'];
-    trace?: never;
-  };
-  '/api/v1/applications/{applicationId}/evaluations': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/applications/{applicationId}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cierra una revisión y calcula su score
+         * @description Validación bloqueante ocurre antes de crear un intento. Datos válidos pero insuficientes sí crean una evaluación revision_manual. El procesamiento es síncrono; un fallo del motor persiste un intento error y retorna 502 o 504 con evaluationId para recuperarlo y reintentar explícitamente.
+         */
+        post: operations["evaluateApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Cierra una revisión y calcula su score
-     * @description Validación bloqueante ocurre antes de crear un intento. Datos válidos pero insuficientes sí crean una evaluación revision_manual. El procesamiento es síncrono; un fallo del motor persiste un intento error y retorna 502 o 504 con evaluationId para recuperarlo y reintentar explícitamente.
-     */
-    post: operations['evaluateApplication'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/evaluations/search': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/evaluations/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lista el histórico autorizado con filtros
+         * @description Se usa POST para que el documento exacto no aparezca en URL, historial del navegador ni enlaces compartibles. El orden es siempre completedAt DESC e id DESC; cada página tiene 25 elementos.
+         */
+        post: operations["searchEvaluations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Lista el histórico autorizado con filtros
-     * @description Se usa POST para que el documento exacto no aparezca en URL, historial del navegador ni enlaces compartibles. El orden es siempre completedAt DESC e id DESC; cada página tiene 25 elementos.
-     */
-    post: operations['searchEvaluations'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/evaluations/{evaluationId}/retry': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/evaluations/{evaluationId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reintenta una evaluación fallida sobre su snapshot inmutable
+         * @description Solo el analista propietario puede reintentar una evaluación en estado error. El reintento crea un intento nuevo vinculado mediante retryOfEvaluationId, conserva exactamente el inputHash y los datos normalizados del intento fallido y nunca sobrescribe evidencia previa. Requiere una clave de idempotencia nueva por intención de reintento.
+         */
+        post: operations["retryEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Reintenta una evaluación fallida sobre su snapshot inmutable
-     * @description Solo el analista propietario puede reintentar una evaluación en estado error. El reintento crea un intento nuevo vinculado mediante retryOfEvaluationId, conserva exactamente el inputHash y los datos normalizados del intento fallido y nunca sobrescribe evidencia previa. Requiere una clave de idempotencia nueva por intención de reintento.
-     */
-    post: operations['retryEvaluation'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/evaluations/{evaluationId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/evaluations/{evaluationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consulta el detalle autorizado de una evaluación
+         * @description Un ID inexistente y uno fuera de scope producen la misma respuesta 404.
+         */
+        get: operations["getEvaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Consulta el detalle autorizado de una evaluación
-     * @description Un ID inexistente y uno fuera de scope producen la misma respuesta 404.
-     */
-    get: operations['getEvaluation'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/evaluations/{evaluationId}/audit': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/evaluations/{evaluationId}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulta eventos seguros de la evaluación */
+        get: operations["getEvaluationAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Consulta eventos seguros de la evaluación */
-    get: operations['getEvaluationAudit'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /** Format: uuid */
-    Uuid: string;
-    /** @description Decimal COP serializado como string, mayor que 0 por regla de campo. */
-    MoneyCop: string;
-    HealthResponse: {
-      /** @enum {string} */
-      status: 'ok' | 'ready';
-      /** @constant */
-      service: 'ingestion';
+    schemas: {
+        /** Format: uuid */
+        Uuid: string;
+        /** @description Decimal COP serializado como string, mayor que 0 por regla de campo. */
+        MoneyCop: string;
+        HealthResponse: {
+            /** @enum {string} */
+            status: "ok" | "ready";
+            /** @constant */
+            service: "ingestion";
+        };
+        /** @enum {string} */
+        DocumentType: "CC" | "CE" | "PPT" | "PASSPORT";
+        ContactInput: {
+            phone?: string;
+            /** Format: email */
+            email?: string;
+        } | unknown | unknown;
+        ApplicantInput: {
+            documentType: components["schemas"]["DocumentType"];
+            documentNumber: string;
+            fullName: string;
+            contact: components["schemas"]["ContactInput"];
+        };
+        ApplicantResource: {
+            documentType: components["schemas"]["DocumentType"];
+            documentNumber: string;
+            documentMasked: string;
+            fullName: string;
+            displayName: string;
+            contact: components["schemas"]["ContactInput"];
+        };
+        ConsentInput: {
+            /** @enum {string} */
+            decision: "accepted" | "denied";
+            noticeVersion: string;
+            /** @constant */
+            purposeCode: "ALTERNATIVE_CREDIT_RISK_EVALUATION";
+        };
+        ConsentResource: {
+            /** @enum {string} */
+            decision: "accepted" | "denied" | "revoked";
+            noticeVersion: string;
+            /** @constant */
+            purposeCode: "ALTERNATIVE_CREDIT_RISK_EVALUATION";
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        UnavailableData: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "UnavailableData";
+            reason: string;
+        };
+        IncomeProvided: {
+            /** @constant */
+            availability: "provided";
+            monthlyIncomeCop: components["schemas"]["MoneyCop"];
+            /** @enum {string} */
+            sourceType: "employment" | "self_employed" | "pension" | "other";
+            sourceOtherDescription?: string;
+            stabilityMonths: number;
+        } & (unknown & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "IncomeProvided";
+        });
+        IncomeInput: components["schemas"]["IncomeProvided"] | components["schemas"]["UnavailableData"];
+        UtilityReferenceInput: {
+            /** @enum {string} */
+            serviceType: "electricity" | "water" | "gas" | "internet" | "other";
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            observedMonths: number;
+            totalObligations: number;
+            onTimeCount: number;
+            lateCount: number;
+            missedCount: number;
+            averageMonthlyAmountCop: components["schemas"]["MoneyCop"];
+        };
+        UtilitiesProvided: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "UtilitiesProvided";
+            references: components["schemas"]["UtilityReferenceInput"][];
+        };
+        UtilitiesInput: components["schemas"]["UtilitiesProvided"] | components["schemas"]["UnavailableData"];
+        MobileProvided: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "MobileProvided";
+            /** @enum {string} */
+            mode: "prepaid" | "postpaid";
+            tenureMonths: number;
+            observedMonths: number;
+            regularMonths: number;
+        };
+        MobileInput: components["schemas"]["MobileProvided"] | components["schemas"]["UnavailableData"];
+        AlternativeDataInput: {
+            income?: components["schemas"]["IncomeInput"];
+            utilities?: components["schemas"]["UtilitiesInput"];
+            mobile?: components["schemas"]["MobileInput"];
+        };
+        ApplicationCreateInput: {
+            applicant: components["schemas"]["ApplicantInput"];
+            consent?: components["schemas"]["ConsentInput"];
+            alternativeData?: components["schemas"]["AlternativeDataInput"];
+        };
+        ApplicationPatchInput: {
+            applicant?: components["schemas"]["ApplicantInput"];
+            consent?: components["schemas"]["ConsentInput"];
+            alternativeData?: components["schemas"]["AlternativeDataInput"];
+        };
+        /** @enum {string} */
+        ApplicationState: "borrador" | "evaluando" | "evaluada" | "revision_manual" | "error";
+        ApplicationResource: {
+            applicationId: components["schemas"]["Uuid"];
+            state: components["schemas"]["ApplicationState"];
+            revisionNumber: number;
+            lockVersion: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            draftExpiresAt?: string | null;
+            applicant: components["schemas"]["ApplicantResource"];
+            consent?: components["schemas"]["ConsentResource"] | null;
+            alternativeData?: components["schemas"]["AlternativeDataInput"];
+        };
+        EvaluationCreateInput: {
+            revisionNumber: number;
+            /** @constant */
+            expectedCriteriaVersion: "SCORING-MVP-1.0.0";
+        };
+        ScoreScale: {
+            /** @constant */
+            minimum: 300;
+            /** @constant */
+            maximum: 850;
+        };
+        /** @enum {string|null} */
+        RiskBand: "riesgo_bajo" | "riesgo_medio" | "riesgo_alto" | null;
+        Recommendation: {
+            /** @enum {string} */
+            code: "CONTINUE_HUMAN_ANALYSIS" | "MANUAL_REVIEW_REQUIRED" | "DO_NOT_CONTINUE_WITHOUT_DOCUMENTED_HUMAN_DECISION";
+            text: string;
+        };
+        Factor: {
+            rank: number;
+            /** @enum {string} */
+            dimension: "utility" | "mobile" | "income";
+            /** @enum {string} */
+            direction: "favorable" | "unfavorable" | "neutral";
+            dimensionIndex: string;
+            weight: string;
+            contributionPoints: string;
+            observedSummary: string;
+            ruleCode: string;
+            explanation: string;
+        };
+        ManualReviewReason: {
+            code: string;
+            /** @enum {string} */
+            dimension: "utility" | "mobile" | "income" | "explanation";
+            message: string;
+        };
+        ApplicantSummary: {
+            documentMasked: string;
+            displayName: string;
+        };
+        RelatedAttempt: {
+            evaluationId: components["schemas"]["Uuid"];
+            attemptNumber: number;
+            /** @enum {string} */
+            state: "evaluando" | "evaluada" | "revision_manual" | "error";
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completedAt?: string | null;
+            errorCode?: string | null;
+        };
+        EvaluationDetail: {
+            evaluationId: components["schemas"]["Uuid"];
+            applicationId: components["schemas"]["Uuid"];
+            revisionNumber: number;
+            attemptNumber: number;
+            /** @description Evaluación fallida que originó este intento; null para el primero. */
+            retryOfEvaluationId?: components["schemas"]["Uuid"] | null;
+            /** @enum {string} */
+            state: "evaluando" | "evaluada" | "revision_manual" | "error";
+            /** @description Código operativo seguro; solo se presenta cuando state es error. */
+            errorCode?: string | null;
+            score: number | null;
+            scoreScale: components["schemas"]["ScoreScale"];
+            riskBand: components["schemas"]["RiskBand"];
+            recommendation: components["schemas"]["Recommendation"] | null;
+            factors: components["schemas"]["Factor"][];
+            manualReviewReasons: components["schemas"]["ManualReviewReason"][];
+            /** @constant */
+            criteriaVersion: "SCORING-MVP-1.0.0";
+            inputHash: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** @constant */
+            timezone: "America/Bogota";
+            applicantSummary: components["schemas"]["ApplicantSummary"];
+            /** @description Presente en GET detalle; puede omitirse en respuesta inmediata. */
+            inputSnapshot?: components["schemas"]["ApplicationResource"] | null;
+            relatedAttempts: components["schemas"]["RelatedAttempt"][];
+        };
+        EvaluationSearchInput: {
+            page: number;
+            evaluationId?: components["schemas"]["Uuid"];
+            applicantIdentifier?: {
+                documentType: components["schemas"]["DocumentType"];
+                documentNumber: string;
+            };
+            /** Format: date */
+            dateFrom?: string;
+            /** Format: date */
+            dateTo?: string;
+            states?: components["schemas"]["ApplicationState"][];
+        };
+        EvaluationHistoryItem: {
+            evaluationId: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            completedAt: string;
+            /** @constant */
+            timezone: "America/Bogota";
+            documentMasked: string;
+            displayName: string;
+            score: number | null;
+            riskBand: components["schemas"]["RiskBand"];
+            /** @enum {string} */
+            state: "evaluada" | "revision_manual" | "error";
+        };
+        EvaluationSearchPage: {
+            items: components["schemas"]["EvaluationHistoryItem"][];
+            page: number;
+            /** @constant */
+            pageSize: 25;
+            totalItems: number;
+            totalPages: number;
+        };
+        AuditEvent: {
+            eventId: components["schemas"]["Uuid"];
+            eventType: string;
+            /** @enum {string} */
+            outcome: "success" | "blocked" | "denied" | "error";
+            actorDisplay: string;
+            /** @enum {string} */
+            actorRole: "credit_analyst" | "supervisor" | "auditor" | "system";
+            /** Format: date-time */
+            occurredAt: string;
+            safeMetadata: {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        FieldError: {
+            field: string;
+            code: string;
+            message: string;
+        };
+        Problem: {
+            /** Format: uri */
+            type: string;
+            title: string;
+            status: number;
+            detail: string;
+            instance: string;
+            code: string;
+            correlationId: components["schemas"]["Uuid"];
+            retryable: boolean;
+            errors: components["schemas"]["FieldError"][];
+            evaluationId?: components["schemas"]["Uuid"];
+            /** @constant */
+            evaluationStatus?: "error";
+            existingApplicationId?: components["schemas"]["Uuid"];
+            acceptanceUrl?: string;
+        };
     };
-    /** @enum {string} */
-    DocumentType: 'CC' | 'CE' | 'PPT' | 'PASSPORT';
-    ContactInput:
-      | {
-          phone?: string;
-          /** Format: email */
-          email?: string;
-        }
-      | unknown
-      | unknown;
-    ApplicantInput: {
-      documentType: components['schemas']['DocumentType'];
-      documentNumber: string;
-      fullName: string;
-      contact: components['schemas']['ContactInput'];
+    responses: {
+        /** @description JSON, header o parámetro mal formado */
+        BadRequest: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/bad-request",
+                 *       "title": "Solicitud no válida",
+                 *       "status": 400,
+                 *       "detail": "Revisa el formato de la solicitud.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000001",
+                 *       "code": "BAD_REQUEST",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000001",
+                 *       "retryable": false,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Token ausente, expirado o inválido */
+        Unauthorized: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/unauthorized",
+                 *       "title": "Autenticación requerida",
+                 *       "status": 401,
+                 *       "detail": "Inicia una sesión válida para continuar.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000002",
+                 *       "code": "UNAUTHORIZED",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000002",
+                 *       "retryable": false,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Actor autenticado sin rol para la operación */
+        Forbidden: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/forbidden",
+                 *       "title": "Operación no permitida",
+                 *       "status": 403,
+                 *       "detail": "No tienes permiso para realizar esta acción.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000003",
+                 *       "code": "FORBIDDEN",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000003",
+                 *       "retryable": false,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Solicitud inexistente o fuera del scope autorizado */
+        ApplicationNotFound: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/application-not-found",
+                 *       "title": "Solicitud no disponible",
+                 *       "status": 404,
+                 *       "detail": "No fue posible abrir la solicitud solicitada.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000004",
+                 *       "code": "APPLICATION_NOT_AVAILABLE",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000004",
+                 *       "retryable": false,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Evaluación inexistente o fuera del scope autorizado */
+        EvaluationNotFound: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/evaluation-not-found",
+                 *       "title": "Evaluación no disponible",
+                 *       "status": 404,
+                 *       "detail": "No fue posible abrir la evaluación solicitada.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000005",
+                 *       "code": "EVALUATION_NOT_AVAILABLE",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000005",
+                 *       "retryable": false,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Idempotencia, borrador existente, estado o versión en conflicto */
+        Conflict: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description ETag o revisión ya no coincide */
+        PreconditionFailed: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/revision-conflict",
+                 *       "title": "El borrador cambió",
+                 *       "status": 412,
+                 *       "detail": "Recarga la solicitud antes de guardar o evaluar.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000008",
+                 *       "code": "REVISION_CONFLICT",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000008",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Campos inválidos para crear o guardar */
+        ValidationFailed: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/validation-failed",
+                 *       "title": "Revisa los campos indicados",
+                 *       "status": 422,
+                 *       "detail": "Corrige los datos antes de continuar.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000009",
+                 *       "code": "VALIDATION_FAILED",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000009",
+                 *       "retryable": false,
+                 *       "errors": [
+                 *         {
+                 *           "field": "applicant.documentNumber",
+                 *           "code": "INVALID_DOCUMENT",
+                 *           "message": "Ingresa un documento válido para el tipo seleccionado."
+                 *         },
+                 *         {
+                 *           "field": "applicant.contact",
+                 *           "code": "CONTACT_REQUIRED",
+                 *           "message": "Ingresa un teléfono o correo válido."
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Validación bloqueante; no se crea evaluación */
+        EvaluationValidationFailed: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Filtros inválidos; no se ejecuta búsqueda */
+        SearchValidationFailed: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/search-validation-failed",
+                 *       "title": "Revisa los filtros",
+                 *       "status": 422,
+                 *       "detail": "Corrige el rango antes de buscar.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000012",
+                 *       "code": "SEARCH_VALIDATION_FAILED",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000012",
+                 *       "retryable": false,
+                 *       "errors": [
+                 *         {
+                 *           "field": "dateFrom",
+                 *           "code": "INVALID_DATE_RANGE",
+                 *           "message": "La fecha inicial no puede ser posterior a la final."
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Límite de mutaciones por actor excedido */
+        TooManyRequests: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/rate-limited",
+                 *       "title": "Demasiadas solicitudes",
+                 *       "status": 429,
+                 *       "detail": "Espera unos segundos antes de intentar de nuevo.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000013",
+                 *       "code": "RATE_LIMITED",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000013",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description El motor respondió, pero la salida no cumple el contrato */
+        ScoringInvalidResponse: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/scoring-invalid-response",
+                 *       "title": "No fue posible validar el resultado",
+                 *       "status": 502,
+                 *       "detail": "No fue posible validar el resultado. Intenta de nuevo.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000014",
+                 *       "code": "SCORING_RESPONSE_INVALID",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000014",
+                 *       "evaluationId": "20000000-0000-4000-8000-000000000014",
+                 *       "evaluationStatus": "error",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description El motor no concluyó dentro de 750 ms */
+        ScoringTimeout: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/scoring-timeout",
+                 *       "title": "No fue posible calcular el score",
+                 *       "status": 504,
+                 *       "detail": "No fue posible calcular el score. Intenta de nuevo.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000015",
+                 *       "code": "SCORING_TIMEOUT",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000015",
+                 *       "evaluationId": "20000000-0000-4000-8000-000000000015",
+                 *       "evaluationStatus": "error",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description El servicio no está listo */
+        ServiceUnavailable: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/not-ready",
+                 *       "title": "Servicio no disponible",
+                 *       "status": 503,
+                 *       "detail": "El servicio todavía no puede recibir solicitudes.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000016",
+                 *       "code": "NOT_READY",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000016",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description El actor debe aceptar la versión vigente antes de usar funciones crediticias */
+        TermsAcceptanceRequired: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/terms-acceptance-required",
+                 *       "title": "Debe aceptar los términos vigentes",
+                 *       "status": 428,
+                 *       "detail": "Revise y acepte los términos vigentes antes de continuar.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000017",
+                 *       "code": "TERMS_ACCEPTANCE_REQUIRED",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000017",
+                 *       "retryable": false,
+                 *       "acceptanceUrl": "/terms/",
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description No se pudo obtener una decisión confiable del servicio de términos */
+        TermsServiceUnavailable: {
+            headers: {
+                "X-Request-Id": components["headers"]["RequestId"];
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "type": "https://scoring.example/problems/terms-service-unavailable",
+                 *       "title": "No fue posible comprobar la aceptación",
+                 *       "status": 503,
+                 *       "detail": "El acceso permanece bloqueado hasta obtener una decisión confiable.",
+                 *       "instance": "/problems/40000000-0000-4000-8000-000000000018",
+                 *       "code": "TERMS_SERVICE_UNAVAILABLE",
+                 *       "correlationId": "50000000-0000-4000-8000-000000000018",
+                 *       "retryable": true,
+                 *       "errors": []
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
     };
-    ApplicantResource: {
-      documentType: components['schemas']['DocumentType'];
-      documentNumber: string;
-      documentMasked: string;
-      fullName: string;
-      displayName: string;
-      contact: components['schemas']['ContactInput'];
+    parameters: {
+        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+        RequestId: components["schemas"]["Uuid"];
+        /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
+        IdempotencyKey: components["schemas"]["Uuid"];
+        /** @description ETag de lockVersion, por ejemplo "3". */
+        IfMatch: string;
+        ApplicationId: components["schemas"]["Uuid"];
+        EvaluationId: components["schemas"]["Uuid"];
     };
-    ConsentInput: {
-      /** @enum {string} */
-      decision: 'accepted' | 'denied';
-      noticeVersion: string;
-      /** @constant */
-      purposeCode: 'ALTERNATIVE_CREDIT_RISK_EVALUATION';
+    requestBodies: never;
+    headers: {
+        /** @description UUID de correlación efectivo. */
+        RequestId: components["schemas"]["Uuid"];
+        /** @description Versión de concurrencia, por ejemplo "3". */
+        ETag: string;
+        /** @description true solo cuando se devolvió una operación previa. */
+        IdempotencyReplayed: boolean;
     };
-    ConsentResource: {
-      /** @enum {string} */
-      decision: 'accepted' | 'denied' | 'revoked';
-      noticeVersion: string;
-      /** @constant */
-      purposeCode: 'ALTERNATIVE_CREDIT_RISK_EVALUATION';
-      /** Format: date-time */
-      recordedAt: string;
-    };
-    UnavailableData: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      availability: 'UnavailableData';
-      reason: string;
-    };
-    IncomeProvided: {
-      /** @constant */
-      availability: 'provided';
-      monthlyIncomeCop: components['schemas']['MoneyCop'];
-      /** @enum {string} */
-      sourceType: 'employment' | 'self_employed' | 'pension' | 'other';
-      sourceOtherDescription?: string;
-      stabilityMonths: number;
-    } & (unknown & {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      availability: 'IncomeProvided';
-    });
-    IncomeInput:
-      | components['schemas']['IncomeProvided']
-      | components['schemas']['UnavailableData'];
-    UtilityReferenceInput: {
-      /** @enum {string} */
-      serviceType: 'electricity' | 'water' | 'gas' | 'internet' | 'other';
-      /** Format: date */
-      periodStart: string;
-      /** Format: date */
-      periodEnd: string;
-      observedMonths: number;
-      totalObligations: number;
-      onTimeCount: number;
-      lateCount: number;
-      missedCount: number;
-      averageMonthlyAmountCop: components['schemas']['MoneyCop'];
-    };
-    UtilitiesProvided: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      availability: 'UtilitiesProvided';
-      references: components['schemas']['UtilityReferenceInput'][];
-    };
-    UtilitiesInput:
-      | components['schemas']['UtilitiesProvided']
-      | components['schemas']['UnavailableData'];
-    MobileProvided: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      availability: 'MobileProvided';
-      /** @enum {string} */
-      mode: 'prepaid' | 'postpaid';
-      tenureMonths: number;
-      observedMonths: number;
-      regularMonths: number;
-    };
-    MobileInput:
-      | components['schemas']['MobileProvided']
-      | components['schemas']['UnavailableData'];
-    AlternativeDataInput: {
-      income?: components['schemas']['IncomeInput'];
-      utilities?: components['schemas']['UtilitiesInput'];
-      mobile?: components['schemas']['MobileInput'];
-    };
-    ApplicationCreateInput: {
-      applicant: components['schemas']['ApplicantInput'];
-      consent?: components['schemas']['ConsentInput'];
-      alternativeData?: components['schemas']['AlternativeDataInput'];
-    };
-    ApplicationPatchInput: {
-      applicant?: components['schemas']['ApplicantInput'];
-      consent?: components['schemas']['ConsentInput'];
-      alternativeData?: components['schemas']['AlternativeDataInput'];
-    };
-    /** @enum {string} */
-    ApplicationState:
-      'borrador' | 'evaluando' | 'evaluada' | 'revision_manual' | 'error';
-    ApplicationResource: {
-      applicationId: components['schemas']['Uuid'];
-      state: components['schemas']['ApplicationState'];
-      revisionNumber: number;
-      lockVersion: number;
-      /** Format: date-time */
-      createdAt: string;
-      /** Format: date-time */
-      updatedAt: string;
-      /** Format: date-time */
-      draftExpiresAt?: string | null;
-      applicant: components['schemas']['ApplicantResource'];
-      consent?: components['schemas']['ConsentResource'] | null;
-      alternativeData?: components['schemas']['AlternativeDataInput'];
-    };
-    EvaluationCreateInput: {
-      revisionNumber: number;
-      /** @constant */
-      expectedCriteriaVersion: 'SCORING-MVP-1.0.0';
-    };
-    ScoreScale: {
-      /** @constant */
-      minimum: 300;
-      /** @constant */
-      maximum: 850;
-    };
-    /** @enum {string|null} */
-    RiskBand: 'riesgo_bajo' | 'riesgo_medio' | 'riesgo_alto' | null;
-    Recommendation: {
-      /** @enum {string} */
-      code:
-        | 'CONTINUE_HUMAN_ANALYSIS'
-        | 'MANUAL_REVIEW_REQUIRED'
-        | 'DO_NOT_CONTINUE_WITHOUT_DOCUMENTED_HUMAN_DECISION';
-      text: string;
-    };
-    Factor: {
-      rank: number;
-      /** @enum {string} */
-      dimension: 'utility' | 'mobile' | 'income';
-      /** @enum {string} */
-      direction: 'favorable' | 'unfavorable' | 'neutral';
-      dimensionIndex: string;
-      weight: string;
-      contributionPoints: string;
-      observedSummary: string;
-      ruleCode: string;
-      explanation: string;
-    };
-    ManualReviewReason: {
-      code: string;
-      /** @enum {string} */
-      dimension: 'utility' | 'mobile' | 'income' | 'explanation';
-      message: string;
-    };
-    ApplicantSummary: {
-      documentMasked: string;
-      displayName: string;
-    };
-    RelatedAttempt: {
-      evaluationId: components['schemas']['Uuid'];
-      attemptNumber: number;
-      /** @enum {string} */
-      state: 'evaluando' | 'evaluada' | 'revision_manual' | 'error';
-      /** Format: date-time */
-      startedAt: string;
-      /** Format: date-time */
-      completedAt?: string | null;
-      errorCode?: string | null;
-    };
-    EvaluationDetail: {
-      evaluationId: components['schemas']['Uuid'];
-      applicationId: components['schemas']['Uuid'];
-      revisionNumber: number;
-      attemptNumber: number;
-      /** @description Evaluación fallida que originó este intento; null para el primero. */
-      retryOfEvaluationId?: components['schemas']['Uuid'] | null;
-      /** @enum {string} */
-      state: 'evaluando' | 'evaluada' | 'revision_manual' | 'error';
-      /** @description Código operativo seguro; solo se presenta cuando state es error. */
-      errorCode?: string | null;
-      score: number | null;
-      scoreScale: components['schemas']['ScoreScale'];
-      riskBand: components['schemas']['RiskBand'];
-      recommendation: components['schemas']['Recommendation'] | null;
-      factors: components['schemas']['Factor'][];
-      manualReviewReasons: components['schemas']['ManualReviewReason'][];
-      /** @constant */
-      criteriaVersion: 'SCORING-MVP-1.0.0';
-      inputHash: string;
-      /** Format: date-time */
-      startedAt: string;
-      /** Format: date-time */
-      completedAt: string | null;
-      /** @constant */
-      timezone: 'America/Bogota';
-      applicantSummary: components['schemas']['ApplicantSummary'];
-      /** @description Presente en GET detalle; puede omitirse en respuesta inmediata. */
-      inputSnapshot?: components['schemas']['ApplicationResource'] | null;
-      relatedAttempts: components['schemas']['RelatedAttempt'][];
-    };
-    EvaluationSearchInput: {
-      page: number;
-      evaluationId?: components['schemas']['Uuid'];
-      applicantIdentifier?: {
-        documentType: components['schemas']['DocumentType'];
-        documentNumber: string;
-      };
-      /** Format: date */
-      dateFrom?: string;
-      /** Format: date */
-      dateTo?: string;
-      states?: components['schemas']['ApplicationState'][];
-    };
-    EvaluationHistoryItem: {
-      evaluationId: components['schemas']['Uuid'];
-      /** Format: date-time */
-      completedAt: string;
-      /** @constant */
-      timezone: 'America/Bogota';
-      documentMasked: string;
-      displayName: string;
-      score: number | null;
-      riskBand: components['schemas']['RiskBand'];
-      /** @enum {string} */
-      state: 'evaluada' | 'revision_manual' | 'error';
-    };
-    EvaluationSearchPage: {
-      items: components['schemas']['EvaluationHistoryItem'][];
-      page: number;
-      /** @constant */
-      pageSize: 25;
-      totalItems: number;
-      totalPages: number;
-    };
-    AuditEvent: {
-      eventId: components['schemas']['Uuid'];
-      eventType: string;
-      /** @enum {string} */
-      outcome: 'success' | 'blocked' | 'denied' | 'error';
-      actorDisplay: string;
-      /** @enum {string} */
-      actorRole: 'credit_analyst' | 'supervisor' | 'auditor' | 'system';
-      /** Format: date-time */
-      occurredAt: string;
-      safeMetadata: {
-        [key: string]: string | number | boolean | null;
-      };
-    };
-    FieldError: {
-      field: string;
-      code: string;
-      message: string;
-    };
-    Problem: {
-      /** Format: uri */
-      type: string;
-      title: string;
-      status: number;
-      detail: string;
-      instance: string;
-      code: string;
-      correlationId: components['schemas']['Uuid'];
-      retryable: boolean;
-      errors: components['schemas']['FieldError'][];
-      evaluationId?: components['schemas']['Uuid'];
-      /** @constant */
-      evaluationStatus?: 'error';
-      existingApplicationId?: components['schemas']['Uuid'];
-    };
-  };
-  responses: {
-    /** @description JSON, header o parámetro mal formado */
-    BadRequest: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/bad-request",
-         *       "title": "Solicitud no válida",
-         *       "status": 400,
-         *       "detail": "Revisa el formato de la solicitud.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000001",
-         *       "code": "BAD_REQUEST",
-         *       "correlationId": "50000000-0000-4000-8000-000000000001",
-         *       "retryable": false,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Token ausente, expirado o inválido */
-    Unauthorized: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/unauthorized",
-         *       "title": "Autenticación requerida",
-         *       "status": 401,
-         *       "detail": "Inicia una sesión válida para continuar.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000002",
-         *       "code": "UNAUTHORIZED",
-         *       "correlationId": "50000000-0000-4000-8000-000000000002",
-         *       "retryable": false,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Actor autenticado sin rol para la operación */
-    Forbidden: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/forbidden",
-         *       "title": "Operación no permitida",
-         *       "status": 403,
-         *       "detail": "No tienes permiso para realizar esta acción.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000003",
-         *       "code": "FORBIDDEN",
-         *       "correlationId": "50000000-0000-4000-8000-000000000003",
-         *       "retryable": false,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Solicitud inexistente o fuera del scope autorizado */
-    ApplicationNotFound: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/application-not-found",
-         *       "title": "Solicitud no disponible",
-         *       "status": 404,
-         *       "detail": "No fue posible abrir la solicitud solicitada.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000004",
-         *       "code": "APPLICATION_NOT_AVAILABLE",
-         *       "correlationId": "50000000-0000-4000-8000-000000000004",
-         *       "retryable": false,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Evaluación inexistente o fuera del scope autorizado */
-    EvaluationNotFound: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/evaluation-not-found",
-         *       "title": "Evaluación no disponible",
-         *       "status": 404,
-         *       "detail": "No fue posible abrir la evaluación solicitada.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000005",
-         *       "code": "EVALUATION_NOT_AVAILABLE",
-         *       "correlationId": "50000000-0000-4000-8000-000000000005",
-         *       "retryable": false,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Idempotencia, borrador existente, estado o versión en conflicto */
-    Conflict: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description ETag o revisión ya no coincide */
-    PreconditionFailed: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/revision-conflict",
-         *       "title": "El borrador cambió",
-         *       "status": 412,
-         *       "detail": "Recarga la solicitud antes de guardar o evaluar.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000008",
-         *       "code": "REVISION_CONFLICT",
-         *       "correlationId": "50000000-0000-4000-8000-000000000008",
-         *       "retryable": true,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Campos inválidos para crear o guardar */
-    ValidationFailed: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/validation-failed",
-         *       "title": "Revisa los campos indicados",
-         *       "status": 422,
-         *       "detail": "Corrige los datos antes de continuar.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000009",
-         *       "code": "VALIDATION_FAILED",
-         *       "correlationId": "50000000-0000-4000-8000-000000000009",
-         *       "retryable": false,
-         *       "errors": [
-         *         {
-         *           "field": "applicant.documentNumber",
-         *           "code": "INVALID_DOCUMENT",
-         *           "message": "Ingresa un documento válido para el tipo seleccionado."
-         *         },
-         *         {
-         *           "field": "applicant.contact",
-         *           "code": "CONTACT_REQUIRED",
-         *           "message": "Ingresa un teléfono o correo válido."
-         *         }
-         *       ]
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Validación bloqueante; no se crea evaluación */
-    EvaluationValidationFailed: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Filtros inválidos; no se ejecuta búsqueda */
-    SearchValidationFailed: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/search-validation-failed",
-         *       "title": "Revisa los filtros",
-         *       "status": 422,
-         *       "detail": "Corrige el rango antes de buscar.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000012",
-         *       "code": "SEARCH_VALIDATION_FAILED",
-         *       "correlationId": "50000000-0000-4000-8000-000000000012",
-         *       "retryable": false,
-         *       "errors": [
-         *         {
-         *           "field": "dateFrom",
-         *           "code": "INVALID_DATE_RANGE",
-         *           "message": "La fecha inicial no puede ser posterior a la final."
-         *         }
-         *       ]
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description Límite de mutaciones por actor excedido */
-    TooManyRequests: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        'Retry-After'?: number;
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/rate-limited",
-         *       "title": "Demasiadas solicitudes",
-         *       "status": 429,
-         *       "detail": "Espera unos segundos antes de intentar de nuevo.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000013",
-         *       "code": "RATE_LIMITED",
-         *       "correlationId": "50000000-0000-4000-8000-000000000013",
-         *       "retryable": true,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description El motor respondió, pero la salida no cumple el contrato */
-    ScoringInvalidResponse: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/scoring-invalid-response",
-         *       "title": "No fue posible validar el resultado",
-         *       "status": 502,
-         *       "detail": "No fue posible validar el resultado. Intenta de nuevo.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000014",
-         *       "code": "SCORING_RESPONSE_INVALID",
-         *       "correlationId": "50000000-0000-4000-8000-000000000014",
-         *       "evaluationId": "20000000-0000-4000-8000-000000000014",
-         *       "evaluationStatus": "error",
-         *       "retryable": true,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description El motor no concluyó dentro de 750 ms */
-    ScoringTimeout: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        'Retry-After'?: number;
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/scoring-timeout",
-         *       "title": "No fue posible calcular el score",
-         *       "status": 504,
-         *       "detail": "No fue posible calcular el score. Intenta de nuevo.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000015",
-         *       "code": "SCORING_TIMEOUT",
-         *       "correlationId": "50000000-0000-4000-8000-000000000015",
-         *       "evaluationId": "20000000-0000-4000-8000-000000000015",
-         *       "evaluationStatus": "error",
-         *       "retryable": true,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-    /** @description El servicio no está listo */
-    ServiceUnavailable: {
-      headers: {
-        'X-Request-Id': components['headers']['RequestId'];
-        [name: string]: unknown;
-      };
-      content: {
-        /**
-         * @example {
-         *       "type": "https://scoring.example/problems/not-ready",
-         *       "title": "Servicio no disponible",
-         *       "status": 503,
-         *       "detail": "El servicio todavía no puede recibir solicitudes.",
-         *       "instance": "/problems/40000000-0000-4000-8000-000000000016",
-         *       "code": "NOT_READY",
-         *       "correlationId": "50000000-0000-4000-8000-000000000016",
-         *       "retryable": true,
-         *       "errors": []
-         *     }
-         */
-        'application/problem+json': components['schemas']['Problem'];
-      };
-    };
-  };
-  parameters: {
-    /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-    RequestId: components['schemas']['Uuid'];
-    /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
-    IdempotencyKey: components['schemas']['Uuid'];
-    /** @description ETag de lockVersion, por ejemplo "3". */
-    IfMatch: string;
-    ApplicationId: components['schemas']['Uuid'];
-    EvaluationId: components['schemas']['Uuid'];
-  };
-  requestBodies: never;
-  headers: {
-    /** @description UUID de correlación efectivo. */
-    RequestId: components['schemas']['Uuid'];
-    /** @description Versión de concurrencia, por ejemplo "3". */
-    ETag: string;
-    /** @description true solo cuando se devolvió una operación previa. */
-    IdempotencyReplayed: boolean;
-  };
-  pathItems: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  getPublicLiveness: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Proceso vivo */
-      200: {
-        headers: {
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+    getPublicLiveness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          /**
-           * @example {
-           *       "status": "ok",
-           *       "service": "ingestion"
-           *     }
-           */
-          'application/json': components['schemas']['HealthResponse'];
+        requestBody?: never;
+        responses: {
+            /** @description Proceso vivo */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "ok",
+                     *       "service": "ingestion"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
-      };
-      400: components['responses']['BadRequest'];
     };
-  };
-  getPublicReadiness: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description API y persistencia listas */
-      200: {
-        headers: {
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+    getPublicReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          /**
-           * @example {
-           *       "status": "ready",
-           *       "service": "ingestion"
-           *     }
-           */
-          'application/json': components['schemas']['HealthResponse'];
+        requestBody?: never;
+        responses: {
+            /** @description API y persistencia listas */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "ready",
+                     *       "service": "ingestion"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            503: components["responses"]["ServiceUnavailable"];
         };
-      };
-      400: components['responses']['BadRequest'];
-      503: components['responses']['ServiceUnavailable'];
     };
-  };
-  createApplication: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-        /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
-        'Idempotency-Key': components['parameters']['IdempotencyKey'];
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ApplicationCreateInput'];
-      };
-    };
-    responses: {
-      /** @description Solicitud creada o replay idempotente */
-      201: {
-        headers: {
-          /** @description URI relativa del recurso */
-          Location?: string;
-          ETag: components['headers']['ETag'];
-          'X-Request-Id': components['headers']['RequestId'];
-          'Idempotency-Replayed': components['headers']['IdempotencyReplayed'];
-          [name: string]: unknown;
+    createApplication: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          /**
-           * @example {
-           *       "applicationId": "10000000-0000-4000-8000-000000000001",
-           *       "state": "borrador",
-           *       "revisionNumber": 1,
-           *       "lockVersion": 1,
-           *       "createdAt": "2026-08-03T14:05:10Z",
-           *       "updatedAt": "2026-08-03T14:05:10Z",
-           *       "draftExpiresAt": "2026-11-01T14:05:10Z",
-           *       "applicant": {
-           *         "documentType": "CC",
-           *         "documentNumber": "102341032",
-           *         "documentMasked": "CC •••••1032",
-           *         "fullName": "María Paula Rojas",
-           *         "displayName": "María P.",
-           *         "contact": {
-           *           "phone": "+573001112233",
-           *           "email": "maria.rojas@example.test"
-           *         }
-           *       },
-           *       "consent": {
-           *         "decision": "accepted",
-           *         "noticeVersion": "CONSENT-MVP-1.0.0",
-           *         "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION",
-           *         "recordedAt": "2026-08-03T14:05:10Z"
-           *       },
-           *       "alternativeData": {
-           *         "income": {
-           *           "availability": "provided",
-           *           "monthlyIncomeCop": "4000000.00",
-           *           "sourceType": "employment",
-           *           "stabilityMonths": 48
-           *         },
-           *         "utilities": {
-           *           "availability": "provided",
-           *           "references": [
-           *             {
-           *               "serviceType": "electricity",
-           *               "periodStart": "2025-08-01",
-           *               "periodEnd": "2026-07-31",
-           *               "observedMonths": 12,
-           *               "totalObligations": 12,
-           *               "onTimeCount": 12,
-           *               "lateCount": 0,
-           *               "missedCount": 0,
-           *               "averageMonthlyAmountCop": "250000.00"
-           *             }
-           *           ]
-           *         },
-           *         "mobile": {
-           *           "availability": "provided",
-           *           "mode": "postpaid",
-           *           "tenureMonths": 48,
-           *           "observedMonths": 12,
-           *           "regularMonths": 12
-           *         }
-           *       }
-           *     }
-           */
-          'application/json': components['schemas']['ApplicationResource'];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationCreateInput"];
+            };
         };
-      };
-      400: components['responses']['BadRequest'];
-      401: components['responses']['Unauthorized'];
-      403: components['responses']['Forbidden'];
-      409: components['responses']['Conflict'];
-      422: components['responses']['ValidationFailed'];
-      429: components['responses']['TooManyRequests'];
-    };
-  };
-  getApplication: {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-      };
-      path: {
-        applicationId: components['parameters']['ApplicationId'];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Solicitud autorizada */
-      200: {
-        headers: {
-          ETag: components['headers']['ETag'];
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+        responses: {
+            /** @description Solicitud creada o replay idempotente */
+            201: {
+                headers: {
+                    /** @description URI relativa del recurso */
+                    Location?: string;
+                    ETag: components["headers"]["ETag"];
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Idempotency-Replayed": components["headers"]["IdempotencyReplayed"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "applicationId": "10000000-0000-4000-8000-000000000001",
+                     *       "state": "borrador",
+                     *       "revisionNumber": 1,
+                     *       "lockVersion": 1,
+                     *       "createdAt": "2026-08-03T14:05:10Z",
+                     *       "updatedAt": "2026-08-03T14:05:10Z",
+                     *       "draftExpiresAt": "2026-11-01T14:05:10Z",
+                     *       "applicant": {
+                     *         "documentType": "CC",
+                     *         "documentNumber": "102341032",
+                     *         "documentMasked": "CC •••••1032",
+                     *         "fullName": "María Paula Rojas",
+                     *         "displayName": "María P.",
+                     *         "contact": {
+                     *           "phone": "+573001112233",
+                     *           "email": "maria.rojas@example.test"
+                     *         }
+                     *       },
+                     *       "consent": {
+                     *         "decision": "accepted",
+                     *         "noticeVersion": "CONSENT-MVP-1.0.0",
+                     *         "purposeCode": "ALTERNATIVE_CREDIT_RISK_EVALUATION",
+                     *         "recordedAt": "2026-08-03T14:05:10Z"
+                     *       },
+                     *       "alternativeData": {
+                     *         "income": {
+                     *           "availability": "provided",
+                     *           "monthlyIncomeCop": "4000000.00",
+                     *           "sourceType": "employment",
+                     *           "stabilityMonths": 48
+                     *         },
+                     *         "utilities": {
+                     *           "availability": "provided",
+                     *           "references": [
+                     *             {
+                     *               "serviceType": "electricity",
+                     *               "periodStart": "2025-08-01",
+                     *               "periodEnd": "2026-07-31",
+                     *               "observedMonths": 12,
+                     *               "totalObligations": 12,
+                     *               "onTimeCount": 12,
+                     *               "lateCount": 0,
+                     *               "missedCount": 0,
+                     *               "averageMonthlyAmountCop": "250000.00"
+                     *             }
+                     *           ]
+                     *         },
+                     *         "mobile": {
+                     *           "availability": "provided",
+                     *           "mode": "postpaid",
+                     *           "tenureMonths": 48,
+                     *           "observedMonths": 12,
+                     *           "regularMonths": 12
+                     *         }
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ApplicationResource"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationFailed"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["TermsServiceUnavailable"];
         };
-        content: {
-          'application/json': components['schemas']['ApplicationResource'];
+    };
+    getApplication: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                applicationId: components["parameters"]["ApplicationId"];
+            };
+            cookie?: never;
         };
-      };
-      401: components['responses']['Unauthorized'];
-      404: components['responses']['ApplicationNotFound'];
-    };
-  };
-  updateApplicationDraft: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-        /** @description ETag de lockVersion, por ejemplo "3". */
-        'If-Match': components['parameters']['IfMatch'];
-      };
-      path: {
-        applicationId: components['parameters']['ApplicationId'];
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        /**
-         * @example {
-         *       "alternativeData": {
-         *         "income": {
-         *           "availability": "provided",
-         *           "monthlyIncomeCop": "2400000.00",
-         *           "sourceType": "self_employed",
-         *           "stabilityMonths": 14
-         *         }
-         *       }
-         *     }
-         */
-        'application/merge-patch+json': components['schemas']['ApplicationPatchInput'];
-      };
-    };
-    responses: {
-      /** @description Borrador actualizado */
-      200: {
-        headers: {
-          ETag: components['headers']['ETag'];
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+        requestBody?: never;
+        responses: {
+            /** @description Solicitud autorizada */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationResource"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["ApplicationNotFound"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            503: components["responses"]["TermsServiceUnavailable"];
         };
-        content: {
-          'application/json': components['schemas']['ApplicationResource'];
+    };
+    updateApplicationDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description ETag de lockVersion, por ejemplo "3". */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                applicationId: components["parameters"]["ApplicationId"];
+            };
+            cookie?: never;
         };
-      };
-      400: components['responses']['BadRequest'];
-      401: components['responses']['Unauthorized'];
-      404: components['responses']['ApplicationNotFound'];
-      409: components['responses']['Conflict'];
-      412: components['responses']['PreconditionFailed'];
-      422: components['responses']['ValidationFailed'];
-    };
-  };
-  evaluateApplication: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-        /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
-        'Idempotency-Key': components['parameters']['IdempotencyKey'];
-        /** @description ETag de lockVersion, por ejemplo "3". */
-        'If-Match': components['parameters']['IfMatch'];
-      };
-      path: {
-        applicationId: components['parameters']['ApplicationId'];
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        /**
-         * @example {
-         *       "revisionNumber": 1,
-         *       "expectedCriteriaVersion": "SCORING-MVP-1.0.0"
-         *     }
-         */
-        'application/json': components['schemas']['EvaluationCreateInput'];
-      };
-    };
-    responses: {
-      /** @description Evaluación concluida o replay idempotente */
-      201: {
-        headers: {
-          Location?: string;
-          'X-Request-Id': components['headers']['RequestId'];
-          'Idempotency-Replayed': components['headers']['IdempotencyReplayed'];
-          [name: string]: unknown;
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "alternativeData": {
+                 *         "income": {
+                 *           "availability": "provided",
+                 *           "monthlyIncomeCop": "2400000.00",
+                 *           "sourceType": "self_employed",
+                 *           "stabilityMonths": 14
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/merge-patch+json": components["schemas"]["ApplicationPatchInput"];
+            };
         };
-        content: {
-          'application/json': components['schemas']['EvaluationDetail'];
+        responses: {
+            /** @description Borrador actualizado */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationResource"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["ApplicationNotFound"];
+            409: components["responses"]["Conflict"];
+            412: components["responses"]["PreconditionFailed"];
+            422: components["responses"]["ValidationFailed"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            503: components["responses"]["TermsServiceUnavailable"];
         };
-      };
-      400: components['responses']['BadRequest'];
-      401: components['responses']['Unauthorized'];
-      404: components['responses']['ApplicationNotFound'];
-      409: components['responses']['Conflict'];
-      412: components['responses']['PreconditionFailed'];
-      422: components['responses']['EvaluationValidationFailed'];
-      429: components['responses']['TooManyRequests'];
-      502: components['responses']['ScoringInvalidResponse'];
-      504: components['responses']['ScoringTimeout'];
     };
-  };
-  searchEvaluations: {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['EvaluationSearchInput'];
-      };
-    };
-    responses: {
-      /** @description Página, incluso si está vacía */
-      200: {
-        headers: {
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+    evaluateApplication: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description ETag de lockVersion, por ejemplo "3". */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                applicationId: components["parameters"]["ApplicationId"];
+            };
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['EvaluationSearchPage'];
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "revisionNumber": 1,
+                 *       "expectedCriteriaVersion": "SCORING-MVP-1.0.0"
+                 *     }
+                 */
+                "application/json": components["schemas"]["EvaluationCreateInput"];
+            };
         };
-      };
-      400: components['responses']['BadRequest'];
-      401: components['responses']['Unauthorized'];
-      422: components['responses']['SearchValidationFailed'];
-    };
-  };
-  retryEvaluation: {
-    parameters: {
-      query?: never;
-      header: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-        /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
-        'Idempotency-Key': components['parameters']['IdempotencyKey'];
-      };
-      path: {
-        evaluationId: components['parameters']['EvaluationId'];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Nuevo intento concluido o replay idempotente */
-      201: {
-        headers: {
-          Location?: string;
-          'X-Request-Id': components['headers']['RequestId'];
-          'Idempotency-Replayed': components['headers']['IdempotencyReplayed'];
-          [name: string]: unknown;
+        responses: {
+            /** @description Evaluación concluida o replay idempotente */
+            201: {
+                headers: {
+                    Location?: string;
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Idempotency-Replayed": components["headers"]["IdempotencyReplayed"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["ApplicationNotFound"];
+            409: components["responses"]["Conflict"];
+            412: components["responses"]["PreconditionFailed"];
+            422: components["responses"]["EvaluationValidationFailed"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            429: components["responses"]["TooManyRequests"];
+            502: components["responses"]["ScoringInvalidResponse"];
+            503: components["responses"]["TermsServiceUnavailable"];
+            504: components["responses"]["ScoringTimeout"];
         };
-        content: {
-          /**
-           * @example {
-           *       "evaluationId": "20000000-0000-4000-8000-000000000011",
-           *       "applicationId": "10000000-0000-4000-8000-000000000001",
-           *       "revisionNumber": 1,
-           *       "attemptNumber": 2,
-           *       "retryOfEvaluationId": "20000000-0000-4000-8000-000000000010",
-           *       "state": "evaluada",
-           *       "score": 835,
-           *       "scoreScale": {
-           *         "minimum": 300,
-           *         "maximum": 850
-           *       },
-           *       "riskBand": "riesgo_bajo",
-           *       "recommendation": {
-           *         "code": "CONTINUE_HUMAN_ANALYSIS",
-           *         "text": "Continuar con el análisis crediticio humano"
-           *       },
-           *       "factors": [
-           *         {
-           *           "rank": 1,
-           *           "dimension": "utility",
-           *           "direction": "favorable",
-           *           "dimensionIndex": "100.000",
-           *           "weight": "0.400",
-           *           "contributionPoints": "220.000",
-           *           "observedSummary": "12 de 12 obligaciones pagadas puntualmente",
-           *           "ruleCode": "UTILITY_ON_TIME_100",
-           *           "explanation": "La puntualidad completa en servicios aporta favorablemente al score."
-           *         },
-           *         {
-           *           "rank": 2,
-           *           "dimension": "income",
-           *           "direction": "favorable",
-           *           "dimensionIndex": "100.000",
-           *           "weight": "0.300",
-           *           "contributionPoints": "165.000",
-           *           "observedSummary": "48 meses de estabilidad y cobertura de 16.0",
-           *           "ruleCode": "INCOME_STABILITY_36_PLUS_COVERAGE_8_PLUS",
-           *           "explanation": "La estabilidad y cobertura declaradas aportan favorablemente al score."
-           *         },
-           *         {
-           *           "rank": 3,
-           *           "dimension": "mobile",
-           *           "direction": "favorable",
-           *           "dimensionIndex": "91.000",
-           *           "weight": "0.300",
-           *           "contributionPoints": "150.150",
-           *           "observedSummary": "48 meses de antigüedad y 12 de 12 meses regulares",
-           *           "ruleCode": "MOBILE_TENURE_36_59_REGULARITY_100",
-           *           "explanation": "La relación móvil prolongada y regular aporta favorablemente al score."
-           *         }
-           *       ],
-           *       "manualReviewReasons": [],
-           *       "criteriaVersion": "SCORING-MVP-1.0.0",
-           *       "inputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-           *       "startedAt": "2026-08-04T14:07:00Z",
-           *       "completedAt": "2026-08-04T14:07:00.312Z",
-           *       "timezone": "America/Bogota",
-           *       "applicantSummary": {
-           *         "documentMasked": "CC •••••1032",
-           *         "displayName": "María P."
-           *       },
-           *       "relatedAttempts": [
-           *         {
-           *           "evaluationId": "20000000-0000-4000-8000-000000000010",
-           *           "attemptNumber": 1,
-           *           "state": "error",
-           *           "startedAt": "2026-08-04T14:06:00Z",
-           *           "completedAt": "2026-08-04T14:06:00.751Z",
-           *           "errorCode": "SCORING_TIMEOUT"
-           *         }
-           *       ]
-           *     }
-           */
-          'application/json': components['schemas']['EvaluationDetail'];
-        };
-      };
-      400: components['responses']['BadRequest'];
-      401: components['responses']['Unauthorized'];
-      404: components['responses']['EvaluationNotFound'];
-      409: components['responses']['Conflict'];
-      429: components['responses']['TooManyRequests'];
-      502: components['responses']['ScoringInvalidResponse'];
-      504: components['responses']['ScoringTimeout'];
     };
-  };
-  getEvaluation: {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-      };
-      path: {
-        evaluationId: components['parameters']['EvaluationId'];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Detalle e instantánea autorizados */
-      200: {
-        headers: {
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+    searchEvaluations: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['EvaluationDetail'];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluationSearchInput"];
+            };
         };
-      };
-      401: components['responses']['Unauthorized'];
-      404: components['responses']['EvaluationNotFound'];
-    };
-  };
-  getEvaluationAudit: {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
-        'X-Request-Id'?: components['parameters']['RequestId'];
-      };
-      path: {
-        evaluationId: components['parameters']['EvaluationId'];
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Eventos en orden ascendente */
-      200: {
-        headers: {
-          'X-Request-Id': components['headers']['RequestId'];
-          [name: string]: unknown;
+        responses: {
+            /** @description Página, incluso si está vacía */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSearchPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["SearchValidationFailed"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            503: components["responses"]["TermsServiceUnavailable"];
         };
-        content: {
-          /**
-           * @example {
-           *       "evaluationId": "20000000-0000-4000-8000-000000000001",
-           *       "events": [
-           *         {
-           *           "eventId": "30000000-0000-4000-8000-000000000001",
-           *           "eventType": "EVALUATION_STARTED",
-           *           "outcome": "success",
-           *           "actorDisplay": "Analista •042",
-           *           "actorRole": "credit_analyst",
-           *           "occurredAt": "2026-08-03T14:06:00Z",
-           *           "safeMetadata": {
-           *             "fromStatus": "borrador",
-           *             "toStatus": "evaluando",
-           *             "criteriaVersion": "SCORING-MVP-1.0.0"
-           *           }
-           *         }
-           *       ]
-           *     }
-           */
-          'application/json': {
-            evaluationId: components['schemas']['Uuid'];
-            events: components['schemas']['AuditEvent'][];
-          };
-        };
-      };
-      401: components['responses']['Unauthorized'];
-      403: components['responses']['Forbidden'];
-      404: components['responses']['EvaluationNotFound'];
     };
-  };
+    retryEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description UUID nuevo por intención del usuario; vigencia de replay de 24 horas. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                evaluationId: components["parameters"]["EvaluationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Nuevo intento concluido o replay idempotente */
+            201: {
+                headers: {
+                    Location?: string;
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Idempotency-Replayed": components["headers"]["IdempotencyReplayed"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "evaluationId": "20000000-0000-4000-8000-000000000011",
+                     *       "applicationId": "10000000-0000-4000-8000-000000000001",
+                     *       "revisionNumber": 1,
+                     *       "attemptNumber": 2,
+                     *       "retryOfEvaluationId": "20000000-0000-4000-8000-000000000010",
+                     *       "state": "evaluada",
+                     *       "score": 835,
+                     *       "scoreScale": {
+                     *         "minimum": 300,
+                     *         "maximum": 850
+                     *       },
+                     *       "riskBand": "riesgo_bajo",
+                     *       "recommendation": {
+                     *         "code": "CONTINUE_HUMAN_ANALYSIS",
+                     *         "text": "Continuar con el análisis crediticio humano"
+                     *       },
+                     *       "factors": [
+                     *         {
+                     *           "rank": 1,
+                     *           "dimension": "utility",
+                     *           "direction": "favorable",
+                     *           "dimensionIndex": "100.000",
+                     *           "weight": "0.400",
+                     *           "contributionPoints": "220.000",
+                     *           "observedSummary": "12 de 12 obligaciones pagadas puntualmente",
+                     *           "ruleCode": "UTILITY_ON_TIME_100",
+                     *           "explanation": "La puntualidad completa en servicios aporta favorablemente al score."
+                     *         },
+                     *         {
+                     *           "rank": 2,
+                     *           "dimension": "income",
+                     *           "direction": "favorable",
+                     *           "dimensionIndex": "100.000",
+                     *           "weight": "0.300",
+                     *           "contributionPoints": "165.000",
+                     *           "observedSummary": "48 meses de estabilidad y cobertura de 16.0",
+                     *           "ruleCode": "INCOME_STABILITY_36_PLUS_COVERAGE_8_PLUS",
+                     *           "explanation": "La estabilidad y cobertura declaradas aportan favorablemente al score."
+                     *         },
+                     *         {
+                     *           "rank": 3,
+                     *           "dimension": "mobile",
+                     *           "direction": "favorable",
+                     *           "dimensionIndex": "91.000",
+                     *           "weight": "0.300",
+                     *           "contributionPoints": "150.150",
+                     *           "observedSummary": "48 meses de antigüedad y 12 de 12 meses regulares",
+                     *           "ruleCode": "MOBILE_TENURE_36_59_REGULARITY_100",
+                     *           "explanation": "La relación móvil prolongada y regular aporta favorablemente al score."
+                     *         }
+                     *       ],
+                     *       "manualReviewReasons": [],
+                     *       "criteriaVersion": "SCORING-MVP-1.0.0",
+                     *       "inputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                     *       "startedAt": "2026-08-04T14:07:00Z",
+                     *       "completedAt": "2026-08-04T14:07:00.312Z",
+                     *       "timezone": "America/Bogota",
+                     *       "applicantSummary": {
+                     *         "documentMasked": "CC •••••1032",
+                     *         "displayName": "María P."
+                     *       },
+                     *       "relatedAttempts": [
+                     *         {
+                     *           "evaluationId": "20000000-0000-4000-8000-000000000010",
+                     *           "attemptNumber": 1,
+                     *           "state": "error",
+                     *           "startedAt": "2026-08-04T14:06:00Z",
+                     *           "completedAt": "2026-08-04T14:06:00.751Z",
+                     *           "errorCode": "SCORING_TIMEOUT"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["EvaluationNotFound"];
+            409: components["responses"]["Conflict"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            429: components["responses"]["TooManyRequests"];
+            502: components["responses"]["ScoringInvalidResponse"];
+            503: components["responses"]["TermsServiceUnavailable"];
+            504: components["responses"]["ScoringTimeout"];
+        };
+    };
+    getEvaluation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                evaluationId: components["parameters"]["EvaluationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detalle e instantánea autorizados */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["EvaluationNotFound"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            503: components["responses"]["TermsServiceUnavailable"];
+        };
+    };
+    getEvaluationAudit: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description UUID de correlación; se genera uno nuevo si falta o no es UUID. */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                evaluationId: components["parameters"]["EvaluationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eventos en orden ascendente */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "evaluationId": "20000000-0000-4000-8000-000000000001",
+                     *       "events": [
+                     *         {
+                     *           "eventId": "30000000-0000-4000-8000-000000000001",
+                     *           "eventType": "EVALUATION_STARTED",
+                     *           "outcome": "success",
+                     *           "actorDisplay": "Analista •042",
+                     *           "actorRole": "credit_analyst",
+                     *           "occurredAt": "2026-08-03T14:06:00Z",
+                     *           "safeMetadata": {
+                     *             "fromStatus": "borrador",
+                     *             "toStatus": "evaluando",
+                     *             "criteriaVersion": "SCORING-MVP-1.0.0"
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        evaluationId: components["schemas"]["Uuid"];
+                        events: components["schemas"]["AuditEvent"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["EvaluationNotFound"];
+            428: components["responses"]["TermsAcceptanceRequired"];
+            503: components["responses"]["TermsServiceUnavailable"];
+        };
+    };
 }

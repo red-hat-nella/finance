@@ -9,11 +9,15 @@ spec:
     - {name: frontend-archive, type: string}
     - {name: ingestion-archive, type: string}
     - {name: scoring-archive, type: string}
+    - {name: terms-web-archive, type: string}
+    - {name: terms-api-archive, type: string}
   workspaces: [{name: artifacts}]
   results:
     - {name: frontend-digest, type: string}
     - {name: ingestion-digest, type: string}
     - {name: scoring-digest, type: string}
+    - {name: terms-web-digest, type: string}
+    - {name: terms-api-digest, type: string}
   steps:
     - name: copy-verified-archives
       image: $(params.publisher-image)
@@ -31,5 +35,7 @@ spec:
         publish frontend "$(params.frontend-archive)" "$(results.frontend-digest.path)"
         publish ingestion "$(params.ingestion-archive)" "$(results.ingestion-digest.path)"
         publish scoring "$(params.scoring-archive)" "$(results.scoring-digest.path)"
+        publish terms-web "$(params.terms-web-archive)" "$(results.terms-web-digest.path)"
+        publish terms-api "$(params.terms-api-archive)" "$(results.terms-api-digest.path)"
       computeResources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: 500m, memory: 512Mi}}
       securityContext: {runAsNonRoot: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}

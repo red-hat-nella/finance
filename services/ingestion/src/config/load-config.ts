@@ -69,6 +69,16 @@ export function loadConfig(): AppConfig {
         "development-scoring-token-32-bytes-minimum",
       ),
     },
+    termsAccess: {
+      baseUrl: process.env.TERMS_ACCESS_BASE_URL ?? "http://localhost:8082",
+      timeoutMs: Number(process.env.TERMS_ACCESS_TIMEOUT_MS ?? 500),
+      token: secret(
+        "TERMS_SERVICE_TOKEN_FILE",
+        "TERMS_SERVICE_TOKEN",
+        "development-terms-service-token-32-bytes-minimum",
+      ),
+    },
+    termsGateTestBypass: process.env.TERMS_GATE_TEST_BYPASS === "true",
     auth: {
       issuer: process.env.AUTH_ISSUER ?? "http://localhost:8090",
       audience: process.env.AUTH_AUDIENCE ?? "alternative-credit-scoring",
@@ -100,7 +110,8 @@ export function loadConfig(): AppConfig {
       !process.env.DATABASE_PASSWORD_FILE ||
       !process.env.PII_ENCRYPTION_KEY_FILE ||
       !process.env.PII_HMAC_KEY_FILE ||
-      !process.env.SCORING_SERVICE_TOKEN_FILE
+      !process.env.SCORING_SERVICE_TOKEN_FILE ||
+      !process.env.TERMS_SERVICE_TOKEN_FILE
     )
       throw new Error("production secrets must be mounted as files");
   }

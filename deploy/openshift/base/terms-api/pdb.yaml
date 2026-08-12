@@ -1,0 +1,8 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: terms-api
+  labels: {app.kubernetes.io/name: terms-api, app.kubernetes.io/part-of: alternative-credit-scoring}
+spec:
+  minAvailable: 1
+  selector: {matchLabels: {app.kubernetes.io/name: terms-api}}

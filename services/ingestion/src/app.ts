@@ -25,6 +25,8 @@ import { historyRoutes } from "./http/routes/history.routes.js";
 import { auditRoutes } from "./http/routes/audit.routes.js";
 import { mvpRoutes } from "./modules/mvp/mvp.routes.js";
 import { metricsMiddleware, renderMetrics } from "./observability/metrics.js";
+import { TermsAccessClient } from "./clients/terms-access.client.js";
+import { requireTermsAcceptance } from "./http/middleware/require-terms-acceptance.js";
 export function createApp(config: AppConfig, pool: pg.Pool): Express {
   const app = express();
   app.disable("x-powered-by");
@@ -62,6 +64,22 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
           next();
         }
       : authenticate(createJwtVerifier(config));
+  const termsGate = config.termsAccess
+    ? requireTermsAcceptance(new TermsAccessClient(config.termsAccess))
+    : config.termsGateTestBypass && config.nodeEnv !== "production"
+      ? (_req: Request, res: Response, next: NextFunction): void => {
+          res.setHeader("X-Terms-Gate-Bypass", "explicit-test-only");
+          next();
+        }
+      : (req: Request, res: Response): void => {
+          sendProblem(req, res, {
+            status: 503,
+            title: "No fue posible comprobar la aceptación",
+            detail: "El acceso permanece bloqueado hasta configurar el servicio de términos.",
+            code: "TERMS_SERVICE_UNAVAILABLE",
+            retryable: true,
+          });
+        };
   app.use(
     "/api/v1",
     auth,
@@ -85,6 +103,7 @@ export function createApp(config: AppConfig, pool: pg.Pool): Express {
       },
     }),
     authorizeRead,
+    termsGate,
     enforcePublicContract,
     applicationRoutes(pool, config),
     evaluationRoutes(pool, config),

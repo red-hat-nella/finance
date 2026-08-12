@@ -2,7 +2,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: alternative-credit-scoring-dev
-  annotations: {platform.finance2/state: PENDING_VALIDATION}
+  annotations:
+    platform.finance2/state: PENDING_VALIDATION
+    platform.finance2/terms-workloads: terms-migrations@wave-1,terms-api@wave0,terms-web@wave0,terms-retention@wave0
 spec:
   project: default
   source:

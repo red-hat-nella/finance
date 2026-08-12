@@ -18,11 +18,13 @@
     "images": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["frontend", "ingestion", "scoring"],
+      "required": ["frontend", "ingestion", "scoring", "termsWeb", "termsApi"],
       "properties": {
         "frontend": { "$ref": "#/$defs/image" },
         "ingestion": { "$ref": "#/$defs/image" },
-        "scoring": { "$ref": "#/$defs/image" }
+        "scoring": { "$ref": "#/$defs/image" },
+        "termsWeb": { "$ref": "#/$defs/image" },
+        "termsApi": { "$ref": "#/$defs/image" }
       }
     },
     "checks": {
@@ -33,7 +35,7 @@
         "additionalProperties": false,
         "required": ["type", "result", "sourceRef", "observedAt", "summary"],
         "properties": {
-          "type": { "enum": ["inspect", "test", "secure", "build", "render", "publish", "reconcile", "migration", "rollout", "network", "smoke", "backup", "restore", "rollback", "report"] },
+          "type": { "enum": ["inspect", "test", "secure", "build", "render", "publish", "reconcile", "migration", "retention", "rollout", "network", "smoke", "backup", "restore", "rollback", "report"] },
           "result": { "enum": ["PASS", "FAIL", "PENDING_VALIDATION"] },
           "sourceRef": { "type": "string", "minLength": 1 },
           "observedAt": { "type": "string", "format": "date-time" },
@@ -57,4 +59,3 @@
     }
   }
 }
-

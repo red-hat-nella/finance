@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: terms-api}
+spec:
+  template:
+    spec:
+      containers:
+        - name: terms-api
+          volumeMounts:
+            - {name: terms-database-tls, mountPath: /run/secrets/terms-database-tls, readOnly: true}
+      volumes:
+        - name: terms-database-tls
+          projected:
+            defaultMode: 256
+            sources:
+              - secret: {name: terms-database-tls, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: terms-migrations}
+spec:
+  template:
+    spec:
+      containers:
+        - name: terms-migrations
+          volumeMounts:
+            - {name: terms-database-tls, mountPath: /run/secrets/terms-database-tls, readOnly: true}
+      volumes:
+        - name: terms-database-tls
+          projected:
+            defaultMode: 256
+            sources:
+              - secret: {name: terms-database-tls, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: terms-retention}
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: terms-retention
+              volumeMounts:
+                - {name: terms-database-tls, mountPath: /run/secrets/terms-database-tls, readOnly: true}
+          volumes:
+            - name: terms-database-tls
+              projected:
+                defaultMode: 256
+                sources:
+                  - secret: {name: terms-database-tls, items: [{key: ca.crt, path: ca.crt}]}

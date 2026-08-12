@@ -1,0 +1,10 @@
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+html,body { font-family:Roboto,"Helvetica Neue",Arial,sans-serif; letter-spacing:0; color:var(--color-text); }
+h1 { font-size:32px; line-height:40px; font-weight:700; letter-spacing:0; margin:0; }
+h2 { font-size:24px; line-height:32px; font-weight:700; letter-spacing:0; margin:0; }
+h3 { font-size:20px; line-height:28px; font-weight:500; letter-spacing:0; margin:0; }
+p { line-height:24px; }
+.tabular { font-variant-numeric:tabular-nums; }
+@media(max-width:599px){ h1{font-size:28px;line-height:36px} }

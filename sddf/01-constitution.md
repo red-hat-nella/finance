@@ -13,6 +13,8 @@ Principios no negociables
    - La solucion debe funcionar para monolitos, microservicios, aplicaciones sin persistencia y aplicaciones con uno o varios servicios de datos, sin imponer una estructura fija.
 
 2. Autonomia con minima interaccion
+   - Antes de iniciar cualquier trabajo que tenga OpenShift como destino, el LLM debe ejecutar un preflight de sesion no destructivo con `oc whoami` y confirmar el servidor con `oc whoami --show-server`. Si `oc` no tiene una sesion autenticada valida, debe detenerse inmediatamente, no continuar con especificacion, planificacion, implementacion, descubrimiento ni despliegue, y solicitar al usuario que inicie sesion mediante `oc login` por el mecanismo seguro de su organizacion.
+   - El LLM nunca debe pedir que el usuario pegue tokens, contrasenas, kubeconfigs o certificados en el chat. Tras el login, debe pedir solo confirmacion para reintentar el preflight y continuar desde el inicio del flujo.
    - El LLM debe inferir primero desde los artefactos del proyecto, aplicar despues defaults conservadores y descubrir finalmente las capacidades del cluster mediante acceso de solo lectura cuando este disponible.
    - No se debe preguntar al cliente por decisiones implementativas que el LLM pueda resolver, tales como nombres internos, probes basicas, puertos detectables, organizacion de manifiestos, estrategia de build compatible, recursos iniciales prudentes o separacion entre componentes.
    - Solo se puede solicitar informacion que sea externa al proyecto, no descubrible y necesaria para continuar: destino autorizado, acceso seguro, restricciones corporativas, dominios controlados, datos regulatorios o aprobaciones que el LLM no pueda otorgarse.
@@ -23,6 +25,10 @@ Principios no negociables
    - La integracion continua debe probar, analizar, construir una sola vez, publicar una imagen inmutable, actualizar la referencia por digest y producir evidencia trazable.
    - Los despliegues ordinarios no deben depender de comandos manuales del cliente. Las acciones manuales se limitan al bootstrap o a aprobaciones organizacionales expresamente requeridas.
    - Todo cambio debe permitir promocion controlada, deteccion de fallos, rollback a una version saludable y trazabilidad entre commit, imagen, configuracion y ambiente.
+   - Cada feature aceptada debe actualizar en el mismo cambio el estado deseado de OpenShift. Si modifica un componente existente, se deben actualizar su imagen, configuracion, contratos, conectividad y recursos afectados. Si agrega un componente desplegable, como un microservicio, frontend, worker, Job o CronJob, se deben crear todos los recursos OpenShift necesarios para operarlo; no se permite dejarlo funcionando solo en local.
+   - La ausencia de GitOps no autoriza a terminar en manifiestos sin aplicar. En un ambiente no productivo autorizado, el LLM debe ejecutar automaticamente el fallback declarativo de aplicacion directa, esperar el rollout y verificar el flujo funcional. La aprobacion humana se conserva para produccion y para cualquier accion que amplie permisos, exposicion o alcance fuera del namespace autorizado.
+   - La entrega debe mantener paridad funcional y topologica entre la composicion local y OpenShift: toda capacidad ejecutable, dependencia requerida, migracion, ruta de comunicacion y comportamiento observable presente en local debe tener una realizacion equivalente en OpenShift. La equivalencia no obliga a copiar herramientas, bypasses, secretos o servicios de desarrollo cuando OpenShift proporciona una alternativa segura.
+   - La convergencia del cluster es una fase final por feature o servicio, no una accion por cada edicion de codigo. El LLM debe completar primero toda la implementacion, contratos, migraciones, manifiestos y validaciones locales de la feature; despues debe ejecutar una sola secuencia coordinada de despliegue, rollout y smoke, repitiendola unicamente si esa secuencia falla y requiere una correccion.
 
 4. Seguridad nativa de OpenShift
    - Las cargas deben ejecutarse sin privilegios, ser compatibles con UID arbitrario, usar filesystem de solo lectura cuando sea viable y declarar capacidades, ServiceAccounts y permisos minimos.
@@ -57,6 +63,7 @@ Principios no negociables
 
 Reglas de gobierno para el flujo SDD
 
+- `OPENSHIFT_SESSION_REQUIRED` es un bloqueo previo absoluto. Si `oc whoami` falla, devuelve una identidad vacia o no permite confirmar el servidor, el LLM debe emitir ese estado y parar antes de leer o modificar artefactos de la feature. No puede sustituir la comprobacion con credenciales solicitadas al usuario, una sesion supuesta, validacion solamente local ni acceso a otro cluster.
 - `spec.md` define resultados operativos observables y restricciones de negocio, no obliga al cliente a disenar la plataforma.
 - `plan.md` debe producir la arquitectura concreta de OpenShift a partir de la aplicacion y justificar cualquier componente de plataforma adicional.
 - `tasks.md` debe incluir la generacion, validacion y prueba de todos los artefactos necesarios para desplegar sin pasos manuales ordinarios.
@@ -64,13 +71,24 @@ Reglas de gobierno para el flujo SDD
 - Una decision inferida debe registrarse con su evidencia y default. Un dato descubierto debe registrar su fuente sin copiar informacion sensible.
 - Si falta un dato externo realmente bloqueante, el LLM debe completar todo el trabajo independiente de ese dato y emitir `PLATFORM_INPUT_REQUIRED` con solo los campos imprescindibles, su motivo y el canal seguro esperado.
 - Nunca se debe convertir una preferencia no expresada en una pregunta bloqueante. Ante opciones equivalentes, el LLM elige la alternativa mas simple, soportada, reversible y coherente con el proyecto.
+- Toda feature debe incluir un analisis de delta entre la arquitectura local anterior, la arquitectura local resultante y el estado deseado de OpenShift. El delta debe cubrir componentes nuevos, modificados y retirados, asi como imagenes, Services, Routes, Jobs, datos, configuracion, secretos referenciados, NetworkPolicies, observabilidad, pipeline y documentacion.
+- Una feature no esta operativamente terminada mientras exista una capacidad que funcione en la composicion local pero no este declarada, desplegada y verificada en OpenShift, salvo una dependencia externa marcada expresamente como `PLATFORM_INPUT_REQUIRED` que no pueda ser sustituida de forma segura.
+- El cierre debe demostrar uno de estos resultados: `GITOPS_RECONCILED` cuando exista reconciliador, o `DIRECT_APPLY_DEVIATION` cuando el reconciliador no exista. La simple generacion de YAML, un build exitoso o una pagina inicial accesible no prueban convergencia.
 
-Excepcion controlada para pruebas efimeras sin GitOps
+Fallback automatico para ambientes no productivos sin GitOps
 
-- Si el destino es inequivocamente de prueba, el usuario autoriza expresamente la
-  aplicacion directa y el cluster no ofrece un reconciliador GitOps instalable con
-  los permisos disponibles, el LLM puede ejecutar una entrega temporal desde los
-  mismos manifiestos declarativos versionados.
+- Este fallback solo se evalua despues de que el preflight confirme una sesion `oc`
+  valida. Ausencia de GitOps y ausencia de autenticacion son estados distintos: la
+  primera activa el fallback; la segunda detiene todo el flujo con
+  `OPENSHIFT_SESSION_REQUIRED`.
+- Si el destino es no productivo y el cluster no ofrece un reconciliador GitOps
+  operativo con los permisos disponibles, el LLM debe ejecutar una entrega temporal
+  desde los mismos manifiestos declarativos versionados, sin solicitar una nueva
+  confirmacion para cada feature dentro del namespace autorizado.
+- Antes de aplicar, el LLM debe comparar la topologia local con los manifiestos
+  renderizados. Todo componente nuevo debe tener workload, Service cuando requiera
+  descubrimiento, identidad, configuracion, conectividad, probes y pipeline de imagen;
+  tambien se deben incluir migraciones, Jobs, CronJobs, datos y Route cuando apliquen.
 - La excepcion no convierte el estado observado en operacion GitOps completada. Debe
   registrarse como `DIRECT_APPLY_DEVIATION`, con ambiente, motivo, alcance, commit,
   digests, comandos automatizados, resultado del smoke test y prerrequisito pendiente.
@@ -81,5 +99,13 @@ Excepcion controlada para pruebas efimeras sin GitOps
   deshabilitarse declarativamente en un overlay de prueba y quedar documentadas.
 - La secuencia minima es `render -> validacion server-side -> datos -> migracion ->
   workloads -> rollout -> Route -> smoke`. Un fallo detiene la fase siguiente.
+- Al finalizar la implementacion completa de cada feature o servicio, el flujo debe
+  volver a renderizar y aplicar una sola vez el overlay completo o un delta calculado
+  de manera segura, esperar los controladores afectados y ejecutar smoke tests que
+  demuestren el comportamiento nuevo y la no regresion del existente. No se despliega
+  por cada cambio de linea, archivo guardado, commit intermedio o tarea parcial.
+- La aplicacion directa se limita al proyecto/namespace autorizado. Crear un proyecto
+  nuevo es el default cuando las instrucciones del entorno asi lo establezcan; no se
+  cambian otros namespaces ni se despliega a produccion sin la aprobacion requerida.
 - El cierre de la desviacion consiste en instalar o seleccionar GitOps, importar el
   mismo estado deseado y verificar que la reconciliacion no produce diferencias.

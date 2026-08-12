@@ -15,6 +15,7 @@ import { routes } from './app.routes';
 import { RUNTIME_CONFIG, RuntimeConfig } from './core/config/runtime-config';
 import { requestContextInterceptor } from './core/api/request-context.interceptor';
 import { authInterceptor } from './core/api/auth.interceptor';
+import { termsRequiredInterceptor } from './core/api/terms-required.interceptor';
 import { AuthPort } from './core/auth/auth.port';
 import { DevAuthAdapter } from './core/auth/dev-auth.adapter';
 import { OidcAuthAdapter } from './core/auth/oidc-auth.adapter';
@@ -61,7 +62,11 @@ export function createAppConfig(
         }),
       ),
       provideHttpClient(
-        withInterceptors([requestContextInterceptor, authInterceptor]),
+        withInterceptors([
+          requestContextInterceptor,
+          authInterceptor,
+          termsRequiredInterceptor,
+        ]),
       ),
       provideAnimationsAsync(),
       { provide: RUNTIME_CONFIG, useValue: runtimeConfig },

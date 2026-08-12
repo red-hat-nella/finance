@@ -21,25 +21,60 @@ venv/
 .coverage
 htmlcov/
 
+# Redacted, versioned validation evidence for the terms bounded context
+!build/
+build/*
+!build/validation/
+build/validation/*
+!build/validation/terms/
+!build/validation/terms/*.json
+
 # Secrets and local configuration
 .env
 .env.*
+*.env
 !.env.example
 !**/.env.example
+!*.env.example
+!**/*.env.example
+.envrc
+.direnv/
 *.pem
 *.key
 *.crt
 *.p12
+*.pfx
+*.jks
+*.keystore
 *.secret.yaml
+*.secret.yml
+*.secret.json
+*.secrets.json
 secrets/
 **/.secrets/
 .kube/
 kubeconfig*
+*.kubeconfig
+*.kubeconfig.*
+id_rsa
+id_rsa.*
 
 # Runtime and tooling
 *.log
 *.tmp
 *.swp
+*.pid
+*.pid.lock
+*.bak
+*.orig
+*.rej
+.eslintcache
+.npm/
+.pnpm-store/
+.turbo/
+.vite/
+.nx/
+.parcel-cache/
 .DS_Store
 Thumbs.db
 .idea/
@@ -64,3 +99,5 @@ web-app.md
 specs/*
 !specs/002-openshift-runtime-requirements/
 !specs/002-openshift-runtime-requirements/**
+!specs/003-accept-terms/
+!specs/003-accept-terms/**

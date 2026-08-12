@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "terms-release-evidence.finance2/v1",
+  "environment": "dev",
+  "generatedAt": "2026-08-12T17:56:32Z",
+  "result": "PENDING_VALIDATION",
+  "checks": {
+    "render": "PASS",
+    "digestOnly": "PASS",
+    "migration": "DESIRED",
+    "reconciliation": "PENDING_VALIDATION",
+    "rollout": "PENDING_VALIDATION",
+    "persistence": "PENDING_VALIDATION",
+    "rollback": "DESIRED"
+  }
+}

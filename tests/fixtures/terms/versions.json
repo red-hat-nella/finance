@@ -1,0 +1,34 @@
+{
+  "fixtureNotice": "SYNTHETIC TEST DATA ONLY - NOT A LEGAL DOCUMENT",
+  "versions": [
+    {
+      "versionId": "10000000-0000-4000-8000-000000000001",
+      "versionCode": "SYNTHETIC-2026.1",
+      "title": "Synthetic terms for automated tests",
+      "contentFormat": "markdown",
+      "content": "# Synthetic terms\n\nThis invented document exists only for automated testing.",
+      "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "state": "EFFECTIVE",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "effectiveAt": "2026-01-02T00:00:00.000Z",
+      "publishedAt": "2026-01-01T12:00:00.000Z"
+    },
+    {
+      "versionId": "10000000-0000-4000-8000-000000000002",
+      "versionCode": "SYNTHETIC-2026.2",
+      "title": "Future synthetic terms",
+      "contentFormat": "markdown",
+      "content": "# Future synthetic terms\n\nA second invented document for rollover tests.",
+      "contentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "state": "SCHEDULED",
+      "createdAt": "2026-01-03T00:00:00.000Z",
+      "effectiveAt": "2026-06-01T00:00:00.000Z",
+      "publishedAt": "2026-01-03T12:00:00.000Z"
+    }
+  ],
+  "failureCases": {
+    "noEffectiveVersionAt": "2025-12-31T23:59:59.000Z",
+    "conflictingDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "overlapAt": "2026-06-01T00:00:00.000Z"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@finance2/terms-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.0 <23"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "migrate": "node dist/jobs/migrate.js",
+    "retention": "node dist/jobs/retention.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts tests/unit",
+    "test:contract": "vitest run --config vitest.config.ts tests/contract",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:authorization": "vitest run --config vitest.integration.config.ts tests/authorization",
+    "test:performance": "vitest run --config vitest.performance.config.ts"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "express": "5.2.1",
+    "express-rate-limit": "8.6.2",
+    "helmet": "8.3.0",
+    "jose": "6.2.8",
+    "pg": "8.22.0",
+    "pino": "10.3.1",
+    "pino-http": "11.0.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@types/express": "5.0.6",
+    "@types/node": "22.19.11",
+    "@types/pg": "8.20.3",
+    "@types/supertest": "7.2.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "9.39.2",
+    "supertest": "7.2.2",
+    "tsx": "4.23.5",
+    "typescript": "5.5.4",
+    "typescript-eslint": "8.66.0",
+    "vitest": "4.1.10"
+  }
+}

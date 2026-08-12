@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terms-web
+  labels: {app.kubernetes.io/name: terms-web, app.kubernetes.io/component: terms-ui, app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app.kubernetes.io/name: terms-web}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: terms-web, app.kubernetes.io/component: terms-ui, app.kubernetes.io/part-of: alternative-credit-scoring}
+    spec:
+      serviceAccountName: terms-web
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: terms-web
+          image: quay.io/finance2/terms-web@sha256:4444444444444444444444444444444444444444444444444444444444444444
+          envFrom: [{configMapRef: {name: terms-web-config}}]
+          ports: [{name: http, containerPort: 8080, protocol: TCP}]
+          livenessProbe: {httpGet: {path: /health/live, port: http}, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3}
+          readinessProbe: {httpGet: {path: /health/ready, port: http}, initialDelaySeconds: 3, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 3}
+          lifecycle: {preStop: {exec: {command: [/bin/sh, -c, sleep 5]}}}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 250m, memory: 128Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: nginx-cache, mountPath: /var/cache/nginx}
+            - {name: runtime-config, mountPath: /opt/app-root/runtime-config}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 32Mi}}
+        - {name: nginx-cache, emptyDir: {sizeLimit: 32Mi}}
+        - {name: runtime-config, emptyDir: {sizeLimit: 4Mi}}

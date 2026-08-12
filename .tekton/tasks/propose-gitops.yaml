@@ -11,6 +11,8 @@ spec:
     - {name: frontend-digest, type: string}
     - {name: ingestion-digest, type: string}
     - {name: scoring-digest, type: string}
+    - {name: terms-web-digest, type: string}
+    - {name: terms-api-digest, type: string}
   workspaces: [{name: gitops}, {name: git-auth}]
   results: [{name: proposal-ref, type: string}]
   steps:
@@ -29,7 +31,9 @@ spec:
         kustomize edit set image \
           quay.io/finance2/frontend="$(params.registry)/frontend@$(params.frontend-digest)" \
           quay.io/finance2/ingestion="$(params.registry)/ingestion@$(params.ingestion-digest)" \
-          quay.io/finance2/scoring="$(params.registry)/scoring@$(params.scoring-digest)"
+          quay.io/finance2/scoring="$(params.registry)/scoring@$(params.scoring-digest)" \
+          quay.io/finance2/terms-web="$(params.registry)/terms-web@$(params.terms-web-digest)" \
+          quay.io/finance2/terms-api="$(params.registry)/terms-api@$(params.terms-api-digest)"
         cd ../../../..
         git add deploy/openshift/overlays/$(params.environment)/kustomization.yaml
         git -c user.name=finance2-gitops -c user.email=finance2-gitops.invalid commit -m "Promote $(params.commit-sha) to $(params.environment)"

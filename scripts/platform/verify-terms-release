@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENVIRONMENT="dev"
+EVIDENCE="$ROOT/build/platform/evidence/dev/terms-release.json"
+LIVE=false
+while (($#)); do
+  case "$1" in
+    --environment) ENVIRONMENT="$2"; shift 2 ;;
+    --evidence) EVIDENCE="$2"; shift 2 ;;
+    --live) LIVE=true; shift ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+[[ "$ENVIRONMENT" =~ ^(dev|production)$ ]] || { echo "invalid environment" >&2; exit 2; }
+
+rendered="$(mktemp)"; trap 'rm -f "$rendered"' EXIT
+oc kustomize "$ROOT/deploy/openshift/overlays/$ENVIRONMENT" > "$rendered"
+for resource in terms-migrations terms-api terms-web terms-retention; do
+  grep -q "name: $resource" "$rendered" || { echo "missing desired resource: $resource" >&2; exit 1; }
+done
+if grep -Eq 'image: .*terms-(api|web):[^@[:space:]]+' "$rendered"; then
+  echo "terms images must be promoted by digest" >&2; exit 1
+fi
+if grep -Eqi 'DROP (TABLE|SCHEMA).*terms|psql .*terms.*drop' "$ROOT/scripts/platform/rollback"; then
+  echo "destructive terms rollback is forbidden" >&2; exit 1
+fi
+
+mkdir -p "$(dirname "$EVIDENCE")"
+if [[ "$LIVE" != true ]]; then
+  jq -n --arg environment "$ENVIRONMENT" --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{schemaVersion:"terms-release-evidence.finance2/v1",environment:$environment,generatedAt:$generatedAt,result:"PENDING_VALIDATION",checks:{render:"PASS",digestOnly:"PASS",migration:"DESIRED",reconciliation:"PENDING_VALIDATION",rollout:"PENDING_VALIDATION",persistence:"PENDING_VALIDATION",rollback:"DESIRED"}}' > "$EVIDENCE"
+  echo "terms release static contract: PASS; live checks PENDING_VALIDATION ($EVIDENCE)"
+  exit 0
+fi
+
+NAMESPACE="${NAMESPACE:?NAMESPACE is required for --live}"
+oc -n "$NAMESPACE" wait --for=condition=complete job/terms-migrations --timeout=10m
+oc -n "$NAMESPACE" rollout status deployment/terms-api --timeout=10m
+oc -n "$NAMESPACE" rollout status deployment/terms-web --timeout=10m
+for deployment in terms-api terms-web; do
+  image="$(oc -n "$NAMESPACE" get deployment "$deployment" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  [[ "$image" =~ @sha256:[0-9a-f]{64}$ ]]
+done
+"$ROOT/scripts/smoke/terms-gate.sh"
+jq -n --arg environment "$ENVIRONMENT" --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{schemaVersion:"terms-release-evidence.finance2/v1",environment:$environment,generatedAt:$generatedAt,result:"PASS",checks:{render:"PASS",digestOnly:"PASS",migration:"PASS",reconciliation:"PASS",rollout:"PASS",persistence:"PASS",smoke:"PASS",rollback:"DESIRED"}}' > "$EVIDENCE"
+echo "terms release verification: PASS ($EVIDENCE)"

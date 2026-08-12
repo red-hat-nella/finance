@@ -14,6 +14,8 @@ fi
 podman build -t "$REGISTRY/frontend:$TAG" "$ROOT/frontend"
 podman build -f "$ROOT/services/ingestion/Dockerfile" -t "$REGISTRY/ingestion:$TAG" "$ROOT"
 podman build -t "$REGISTRY/scoring:$TAG" "$ROOT/services/scoring"
+podman build -f "$ROOT/apps/terms-web/Dockerfile" -t "$REGISTRY/terms-web:$TAG" "$ROOT"
+podman build -f "$ROOT/services/terms-api/Dockerfile" -t "$REGISTRY/terms-api:$TAG" "$ROOT"
 
 verify_arbitrary_user() {
   local component="$1" image="$2" name="image-check-${component}-$RANDOM" port ready=false
@@ -26,6 +28,12 @@ verify_arbitrary_user() {
       args+=(-e APP_ENV=development -e SCORING_SERVICE_TOKEN=development-scoring-token-32-bytes-minimum)
       ;;
     ingestion)
+      args+=(-e NODE_ENV=development -e DATABASE_HOST=127.0.0.1)
+      ;;
+    terms-web)
+      args+=(--add-host terms-api:127.0.0.1 --tmpfs /var/cache/nginx:rw,nosuid,nodev --tmpfs /opt/app-root/runtime-config:rw,nosuid,nodev -e TERMS_API_BASE_URL=/terms-api -e AUTH_MODE=oidc -e OIDC_ISSUER=https://identity.invalid -e OIDC_CLIENT_ID=terms-web -e OIDC_SCOPE="openid profile")
+      ;;
+    terms-api)
       args+=(-e NODE_ENV=development -e DATABASE_HOST=127.0.0.1)
       ;;
   esac
@@ -45,7 +53,7 @@ verify_arbitrary_user() {
 
 records="$(mktemp)"
 trap 'rm -f "$records"' EXIT
-for component in frontend ingestion scoring; do
+for component in frontend ingestion scoring terms-web terms-api; do
   image="$REGISTRY/$component:$TAG"
   verify_arbitrary_user "$component" "$image"
   id="$(podman image inspect "$image" --format '{{.Id}}')"

@@ -1,0 +1,16 @@
+apiVersion: platform.finance2/v1
+kind: GitOpsApplicationContract
+metadata:
+  name: finance2-dev-terms-extension
+  annotations: {platform.finance2/state: PENDING_VALIDATION}
+spec:
+  applicationRef: alternative-credit-scoring-dev
+  desiredStatePath: deploy/openshift/overlays/dev
+  images: [frontend, ingestion, scoring, terms-web, terms-api]
+  syncOrder:
+    - {wave: -1, resources: [terms-migrations]}
+    - {wave: 0, resources: [terms-api, terms-web, terms-retention]}
+    - {wave: 1, resources: [frontend, ingestion]}
+  evidence:
+    state: PENDING_VALIDATION
+    reason: GitOps reconciler is not observed in the current development profile

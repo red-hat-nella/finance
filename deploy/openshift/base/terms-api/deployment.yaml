@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terms-api
+  labels: {app.kubernetes.io/name: terms-api, app.kubernetes.io/component: terms-api, app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations: {argocd.argoproj.io/sync-wave: "0"}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app.kubernetes.io/name: terms-api}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: terms-api, app.kubernetes.io/component: terms-api, app.kubernetes.io/part-of: alternative-credit-scoring}
+    spec:
+      serviceAccountName: terms-api
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: terms-api
+          image: quay.io/finance2/terms-api@sha256:5555555555555555555555555555555555555555555555555555555555555555
+          envFrom: [{configMapRef: {name: terms-api-config}}]
+          env:
+            - {name: DATABASE_PASSWORD_FILE, value: /run/secrets/terms/database-password}
+            - {name: INTERNAL_SERVICE_TOKEN_FILE, value: /run/secrets/terms/internal-service-token}
+          ports: [{name: http, containerPort: 8080, protocol: TCP}]
+          livenessProbe: {httpGet: {path: /health/live, port: http}, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3}
+          readinessProbe: {httpGet: {path: /health/ready, port: http}, initialDelaySeconds: 5, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 3}
+          lifecycle: {preStop: {exec: {command: [/bin/sh, -c, sleep 5]}}}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+          volumeMounts:
+            - {name: runtime-secrets, mountPath: /run/secrets/terms, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: runtime-secrets
+          projected:
+            defaultMode: 256
+            sources:
+              - secret:
+                  name: terms-runtime
+                  items:
+                    - {key: database-password, path: database-password}
+                    - {key: internal-service-token, path: internal-service-token}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

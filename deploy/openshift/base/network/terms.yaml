@@ -1,0 +1,84 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: frontend-to-terms, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: terms-web}}}
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: terms-api}}}
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: terms-web-from-frontend, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: terms-web}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}}]
+      ports: [{protocol: TCP, port: 8080}]
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: terms-api-from-consumers, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.kubernetes.io/name, operator: In, values: [terms-api, terms-migrations, terms-retention]}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: frontend}}}
+        - {podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}}
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ingestion-to-terms-api, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: ingestion}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: terms-api}}}]
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: terms-api-to-postgres, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: terms-api}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}}]
+      ports: [{protocol: TCP, port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: postgres-from-terms-api, labels: {app.kubernetes.io/part-of: alternative-credit-scoring}}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: postgres}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - {key: app.kubernetes.io/name, operator: In, values: [terms-api, terms-migrations, terms-retention]}
+      ports: [{protocol: TCP, port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: terms-api-to-jwks
+  labels: {app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations:
+    platform.finance2/state: PENDING_VALIDATION
+    platform.finance2/input: replace TEST-NET CIDR in each overlay with the authorized OIDC JWKS destination
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: terms-api}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 198.51.100.0/32}}]
+      ports: [{protocol: TCP, port: 443}]

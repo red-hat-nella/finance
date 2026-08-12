@@ -22,6 +22,7 @@ const config = configSchema.parse({
     criteriaVersion: "SCORING-MVP-1.0.0",
     token: "a".repeat(32),
   },
+  termsGateTestBypass: true,
   auth: {
     issuer: "http://auth:8080",
     audience: "alternative-credit-scoring",

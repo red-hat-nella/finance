@@ -17,6 +17,13 @@ exclusivamente sus keys.
 | `registry-push` | identidad de build | referencia gestionada por plataforma | Publicar imágenes; nunca se monta en workloads |
 | `gitops-repository` | bot/reconciliador | referencia de GitHub App o robot revocable | Proponer/leer estado deseado |
 | `backup-target` | backup/restore | `upload-curl.conf`, `restore-curl.conf`, `encryption-passphrase` | Transferencia HTTPS y cifrado fuera del PVC; los archivos config se crean por canal seguro |
+| `terms-runtime` | terms-api | `database-password`, `internal-service-token` | Runtime aislado y autenticación del contrato interno; no reutiliza credenciales de ingestion |
+| `terms-migrator` | terms-migrations | `database-migrator-password` | DDL limitado al esquema `terms` |
+| `terms-retention` | terms-retention | `database-retention-password` | Anonimización programada y auditable de aceptaciones vencidas |
+| `terms-database-tls` | terms-api y jobs de terms | `ca.crt` | Verificación TLS del PostgreSQL propio del bounded context |
+| `terms-backup` | terms-backup/restore | `database-backup-password` | Lectura acotada del esquema `terms` para recuperación |
+| `terms-backup-target` | terms-backup/restore | `provider-reference` | Referencia opaca al destino externo administrado |
+| `terms-keyring` (opcional) | terms-retention | `hmac-key-v1` | Seudonimización irreversible si la política aprobada la exige |
 
 Reglas:
 
@@ -30,3 +37,5 @@ Reglas:
 6. Cambiar la clave HMAC activa requiere reindexar blind indexes antes del switch; la
    verificación de rotación bloquea la promoción si existen filas con una versión de
    cifrado ausente del keyring.
+7. Los consumidores `terms-*` no montan secretos `ingestion-*` ni `database-*`; cada
+   workload recibe únicamente las claves listadas para su rol lógico.

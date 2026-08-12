@@ -12,6 +12,13 @@ images:
   - name: quay.io/finance2/scoring
     newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/scoring
     digest: sha256:28e310ee6fa8040f5b75f65d3e38adea40b2be4e5b1982f79217a684c5e42fa9
+  - name: quay.io/finance2/terms-web
+    newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/terms-web
+    digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
+  - name: quay.io/finance2/terms-api
+    newName: image-registry.openshift-image-registry.svc:5000/rh-ee-mpolo-dev/terms-api
+    digest: sha256:5555555555555555555555555555555555555555555555555555555555555555
 patches:
   - path: patches/ingestion-config.yaml
   - path: patches/fast-test-deployment.yaml
+  - path: patches/terms-config.yaml

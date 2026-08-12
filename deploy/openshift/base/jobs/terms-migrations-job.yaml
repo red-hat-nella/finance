@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: terms-migrations
+  labels: {app.kubernetes.io/name: terms-migrations, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: terms-migrations, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}
+    spec:
+      serviceAccountName: terms-migrations
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: terms-migrations
+          image: quay.io/finance2/terms-api@sha256:5555555555555555555555555555555555555555555555555555555555555555
+          command: [node, dist/jobs/migrate.js]
+          envFrom: [{configMapRef: {name: terms-api-config}}]
+          env:
+            - {name: DATABASE_USER, value: terms_migrator}
+            - {name: DATABASE_PASSWORD_FILE, value: /run/secrets/terms/database-migrator-password}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 250m, memory: 256Mi}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+          volumeMounts:
+            - {name: runtime-secrets, mountPath: /run/secrets/terms, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: runtime-secrets
+          projected:
+            defaultMode: 256
+            sources:
+              - secret:
+                  name: terms-migrator
+                  items: [{key: database-migrator-password, path: database-migrator-password}]
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

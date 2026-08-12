@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+OUTPUT="${1:-$ROOT/docs/operations/terms-and-conditions.md}"
+for environment in dev production; do
+  oc kustomize "$ROOT/deploy/openshift/overlays/$environment" > "/tmp/finance2-terms-$environment.yaml"
+  for resource in terms-web terms-api terms-migrations terms-retention; do
+    grep -q "name: $resource" "/tmp/finance2-terms-$environment.yaml" || { echo "missing $resource in $environment" >&2; exit 1; }
+  done
+done
+
+[[ -s "$OUTPUT" ]] || { echo "terms operations document missing: $OUTPUT" >&2; exit 1; }
+for term in DESIRED CONFIRMED PENDING_VALIDATION terms-web terms-api terms-migrations terms-retention terms-backup GitOps rollback; do
+  grep -q "$term" "$OUTPUT" || { echo "operations document missing $term" >&2; exit 1; }
+done
+if grep -Eqi '(password|token|secret)[[:space:]]*[:=][[:space:]]*[^`[:space:]]+' "$OUTPUT"; then
+  echo "operations document may contain a secret value" >&2
+  exit 1
+fi
+echo "terms operations documentation: PASS ($OUTPUT)"

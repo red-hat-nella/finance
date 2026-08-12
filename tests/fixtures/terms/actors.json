@@ -1,0 +1,54 @@
+{
+  "fixtureNotice": "SYNTHETIC TEST IDENTITIES ONLY - NO REAL PII OR CREDENTIALS",
+  "actors": [
+    {
+      "actorId": "synthetic-analyst-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "roles": ["credit_analyst"]
+    },
+    {
+      "actorId": "synthetic-supervisor-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "roles": ["supervisor"]
+    },
+    {
+      "actorId": "synthetic-auditor-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "roles": ["auditor"]
+    },
+    {
+      "actorId": "synthetic-terms-admin-001",
+      "orgScopeId": "synthetic-org-control",
+      "roles": ["terms_admin"]
+    },
+    {
+      "actorId": "synthetic-cross-scope-001",
+      "orgScopeId": "synthetic-org-beta",
+      "roles": ["supervisor"]
+    }
+  ],
+  "failureCases": [
+    {
+      "name": "missing-role",
+      "actorId": "synthetic-no-role-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "roles": [],
+      "expectedStatus": 403
+    },
+    {
+      "name": "cross-scope",
+      "actorId": "synthetic-cross-scope-001",
+      "orgScopeId": "synthetic-org-beta",
+      "targetOrgScopeId": "synthetic-org-alpha",
+      "roles": ["supervisor"],
+      "expectedStatus": 403
+    },
+    {
+      "name": "expired-session",
+      "actorId": "synthetic-expired-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "roles": ["credit_analyst"],
+      "expectedStatus": 401
+    }
+  ]
+}

@@ -25,6 +25,10 @@ const SAFE_MESSAGES: Readonly<Record<string, string>> = {
   FORBIDDEN: 'No tiene permiso para realizar esta operación.',
   PAYLOAD_TOO_LARGE: 'La información enviada supera el tamaño permitido.',
   SCORING_TIMEOUT: 'La evaluación tardó demasiado. Puede intentar nuevamente.',
+  TERMS_ACCEPTANCE_REQUIRED:
+    'Debe revisar y aceptar los términos vigentes antes de continuar.',
+  TERMS_SERVICE_UNAVAILABLE:
+    'No fue posible comprobar la aceptación de términos. Intente nuevamente.',
   EVALUATION_NOT_FOUND:
     'No encontramos una evaluación accesible con ese identificador.',
   INTERNAL_FAILURE:

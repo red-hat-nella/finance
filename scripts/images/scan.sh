@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 mkdir -p "$OUT/trivy-cache"
 [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "IMAGE_TAG must be the full commit SHA" >&2; exit 2; }
 
-for component in frontend ingestion scoring; do
+for component in frontend ingestion scoring terms-web terms-api; do
   image="$REGISTRY/$component:$TAG"
   archive="$(mktemp --suffix=.tar)"
   podman save --format docker-archive -o "$archive" "$image"
@@ -27,4 +27,6 @@ done
 npm audit --audit-level=high --omit=dev
 npm --prefix "$ROOT/frontend" audit --audit-level=high --omit=dev
 npm --prefix "$ROOT/services/ingestion" audit --audit-level=high --omit=dev
+npm --prefix "$ROOT/apps/terms-web" audit --audit-level=high --omit=dev
+npm --prefix "$ROOT/services/terms-api" audit --audit-level=high --omit=dev
 echo "SBOM CycloneDX y vulnerabilidades HIGH/CRITICAL: PASS"

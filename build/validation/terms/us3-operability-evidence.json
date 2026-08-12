@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "classification": "SYNTHETIC_REDACTED",
+  "story": "US3",
+  "status": "PASS",
+  "checks": {
+    "auditScopeAndNoPartialFallback": "PASS",
+    "retentionFiveYearIdempotency": "PASS",
+    "databaseFailureAndRecovery": "PASS",
+    "jwksFailureAndRecovery": "PASS",
+    "circuitFailureAndRecovery": "PASS",
+    "noEffectiveVersionFailClosed": "PASS",
+    "truthfulProbes": "PASS",
+    "metricsAndAlerts": "PASS"
+  },
+  "liveReadOnly": "SKIPPED",
+  "redaction": {
+    "tokens": "OMITTED",
+    "actors": "OMITTED",
+    "acceptanceRows": "OMITTED",
+    "legalContent": "OMITTED",
+    "rawLogs": "OMITTED"
+  }
+}

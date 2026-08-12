@@ -1,0 +1,44 @@
+{
+  "fixtureNotice": "SYNTHETIC TEST DATA ONLY - CONTAINS NO REAL PERSON",
+  "acceptances": [
+    {
+      "acceptanceId": "20000000-0000-4000-8000-000000000001",
+      "versionId": "10000000-0000-4000-8000-000000000001",
+      "versionCode": "SYNTHETIC-2026.1",
+      "actorId": "synthetic-analyst-001",
+      "orgScopeId": "synthetic-org-alpha",
+      "acceptedAt": "2026-01-02T08:30:00.000Z",
+      "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "requestId": "30000000-0000-4000-8000-000000000001",
+      "idempotencyKey": "40000000-0000-4000-8000-000000000001",
+      "retentionUntil": "2031-01-02T08:30:00.000Z",
+      "anonymizedAt": null
+    },
+    {
+      "acceptanceId": "20000000-0000-4000-8000-000000000002",
+      "versionId": "10000000-0000-4000-8000-000000000001",
+      "versionCode": "SYNTHETIC-2026.1",
+      "actorId": null,
+      "orgScopeId": null,
+      "acceptedAt": "2020-01-02T08:30:00.000Z",
+      "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "requestId": "30000000-0000-4000-8000-000000000002",
+      "idempotencyKey": "40000000-0000-4000-8000-000000000002",
+      "retentionUntil": "2025-01-02T08:30:00.000Z",
+      "anonymizedAt": "2025-01-03T02:30:00.000Z"
+    }
+  ],
+  "failureCases": [
+    {
+      "name": "version-changed",
+      "versionId": "10000000-0000-4000-8000-000000000002",
+      "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedCode": "TERMS_VERSION_CHANGED"
+    },
+    {
+      "name": "idempotency-key-reused-with-different-body",
+      "idempotencyKey": "40000000-0000-4000-8000-000000000001",
+      "expectedCode": "IDEMPOTENCY_CONFLICT"
+    }
+  ]
+}

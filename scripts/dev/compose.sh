@@ -20,6 +20,12 @@ case "${ENGINE}" in
       [scoring_service_token]="scoring-service-token"
       [pii_encryption_key]="pii-encryption-key"
       [pii_hmac_key]="pii-hmac-key"
+      [terms_runtime_password]="terms-runtime-password"
+      [terms_migrator_password]="terms-migrator-password"
+      [terms_retention_password]="terms-retention-password"
+      [terms_backup_password]="terms-backup-password"
+      [terms_internal_service_token]="terms-internal-service-token"
+      [terms_fingerprint_key]="terms-fingerprint-key"
     )
     for name in "${!PODMAN_SECRETS[@]}"; do
       podman secret inspect "$name" >/dev/null 2>&1 || podman secret create "$name" "${ROOT_DIR}/deploy/local/.secrets/${PODMAN_SECRETS[$name]}" >/dev/null

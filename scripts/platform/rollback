@@ -20,9 +20,13 @@ jq -e '.checks | any(.type=="migration" and .result=="PASS" and (.summary|test("
   echo "schema is not proven N-1 compatible; ordinary rollback is blocked and destructive down migration is forbidden" >&2
   exit 1
 }
+jq -e '[.images.termsWeb, .images.termsApi] | all(.digest | test("^sha256:[0-9a-f]{64}$"))' "$record" >/dev/null || {
+  echo "terms images are not proven immutable; rollback is blocked" >&2
+  exit 1
+}
 proposal="$ROOT/build/platform/rollback/$ENVIRONMENT-$RELEASE.json"
 mkdir -p "$(dirname "$proposal")"
 jq -n --arg environment "$ENVIRONMENT" --arg releaseId "$RELEASE" --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '{schemaVersion:"rollback-proposal.finance2/v1",environment:$environment,releaseId:$releaseId,generatedAt:$generatedAt,mode:"gitops-revert",status:"PROPOSED"}' > "$proposal"
+  '{schemaVersion:"rollback-proposal.finance2/v1",environment:$environment,releaseId:$releaseId,generatedAt:$generatedAt,mode:"gitops-revert",components:["frontend","ingestion","scoring","terms-web","terms-api"],dataPolicy:"no-down-migration-no-data-restore",status:"PROPOSED"}' > "$proposal"
 [[ "$PROPOSE_ONLY" == true ]] || { echo "direct cluster rollback is forbidden; submit the generated GitOps proposal" >&2; exit 2; }
 echo "rollback proposal written: $proposal"

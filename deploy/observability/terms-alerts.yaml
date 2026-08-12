@@ -1,0 +1,18 @@
+apiVersion: platform.finance2/v1
+kind: AlertContract
+metadata: {name: terms-and-conditions}
+spec:
+  state: DECLARED
+  optionalResources: [ServiceMonitor, PrometheusRule]
+  prerequisite: approved monitoring APIs discovered
+  fallback: corporate scrape and alerting integration
+  alerts:
+    - {name: TermsUnavailable, severity: critical, signal: 'availability smoke fails or 5xx rate > 5% for 5m'}
+    - {name: TermsDatabaseUnavailable, severity: critical, signal: 'finance2_dependency_up{service="terms-api",dependency="database"} == 0 for 2m'}
+    - {name: NoSingleActiveTermsVersion, severity: critical, signal: 'finance2_terms_applicable_versions != 1 for 5m'}
+    - {name: TermsAcceptanceErrorRate, severity: warning, signal: 'failed acceptance ratio > 2% for 10m'}
+    - {name: TermsAcceptanceLatency, severity: warning, signal: 'finance2_terms_operation_duration_seconds for operation="accept" p95 > 1s for 10m'}
+    - {name: TermsMigrationFailed, severity: critical, signal: 'finance2_terms_migration_success == 0'}
+    - {name: TermsRetentionLate, severity: warning, signal: 'time() - finance2_terms_retention_last_success_timestamp_seconds > 93600 or backlog increasing'}
+    - {name: TermsBackupRestoreStale, severity: critical, signal: 'finance2_terms_restore_age_seconds > 7776000'}
+    - {name: TermsGateSmokeFailed, severity: critical, signal: 'blocked-accept-authorized smoke flow fails'}

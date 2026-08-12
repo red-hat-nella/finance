@@ -10,6 +10,7 @@ const OPERATIONS = [
   },
   { pattern: /^\/evaluations\/search$/, methods: ["POST"] },
   { pattern: /^\/evaluations\/[^/]+$/i, methods: ["GET"] },
+  { pattern: /^\/evaluations\/[^/]+\/retry$/i, methods: ["POST"] },
   { pattern: /^\/evaluations\/[^/]+\/audit$/i, methods: ["GET"] },
 ] as const;
 

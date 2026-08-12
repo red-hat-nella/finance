@@ -17,3 +17,21 @@ secrets:
   pii_hmac_key:
     external: true
     name: pii_hmac_key
+  terms_runtime_password:
+    external: true
+    name: terms_runtime_password
+  terms_migrator_password:
+    external: true
+    name: terms_migrator_password
+  terms_retention_password:
+    external: true
+    name: terms_retention_password
+  terms_backup_password:
+    external: true
+    name: terms_backup_password
+  terms_internal_service_token:
+    external: true
+    name: terms_internal_service_token
+  terms_fingerprint_key:
+    external: true
+    name: terms_fingerprint_key

@@ -5,5 +5,7 @@ resources:
   - frontend
   - ingestion
   - scoring
+  - terms-web
+  - terms-api
   - jobs
   - network

@@ -4,3 +4,4 @@ resources:
   - frontend-configmap.yaml
   - ingestion-configmap.yaml
   - scoring-configmap.yaml
+  - terms-configmap.yaml

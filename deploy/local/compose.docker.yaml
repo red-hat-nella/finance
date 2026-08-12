@@ -5,6 +5,12 @@ secrets:
   scoring_service_token: {file: ./.secrets/scoring-service-token}
   pii_encryption_key: {file: ./.secrets/pii-encryption-key}
   pii_hmac_key: {file: ./.secrets/pii-hmac-key}
+  terms_runtime_password: {file: ./.secrets/terms-runtime-password}
+  terms_migrator_password: {file: ./.secrets/terms-migrator-password}
+  terms_retention_password: {file: ./.secrets/terms-retention-password}
+  terms_backup_password: {file: ./.secrets/terms-backup-password}
+  terms_internal_service_token: {file: ./.secrets/terms-internal-service-token}
+  terms_fingerprint_key: {file: ./.secrets/terms-fingerprint-key}
 
 services:
   frontend:

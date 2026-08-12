@@ -15,6 +15,13 @@ deny contains message if {
 }
 
 deny contains message if {
+  input.kind == "Service"
+  startswith(input.metadata.name, "terms-")
+  input.spec.type != "ClusterIP"
+  message := sprintf("Terms Service %s must use ClusterIP", [input.metadata.name])
+}
+
+deny contains message if {
   input.kind == "NetworkPolicy"
   some egress in input.spec.egress
   some destination in egress.to

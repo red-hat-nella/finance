@@ -1,6 +1,7 @@
 .git/
 .gitignore
 .dockerignore
+Dockerfile*
 **/node_modules/
 **/dist/
 **/build/
@@ -20,3 +21,7 @@
 playwright-report/
 test-results/
 specs/
+.kube/
+kubeconfig*
+**/*.secret.yaml
+**/secrets/

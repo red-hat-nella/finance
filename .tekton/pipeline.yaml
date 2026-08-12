@@ -18,6 +18,8 @@ spec:
     - {name: frontend-digest, value: $(tasks.publish.results.frontend-digest)}
     - {name: ingestion-digest, value: $(tasks.publish.results.ingestion-digest)}
     - {name: scoring-digest, value: $(tasks.publish.results.scoring-digest)}
+    - {name: terms-web-digest, value: $(tasks.publish.results.terms-web-digest)}
+    - {name: terms-api-digest, value: $(tasks.publish.results.terms-api-digest)}
     - {name: evidence-ref, value: $(finally.report.results.evidence-ref)}
     - {name: operations-doc-ref, value: $(finally.report.results.operations-doc-ref)}
   tasks:
@@ -71,10 +73,32 @@ spec:
         - {name: commit-sha, value: $(params.commit-sha)}
       workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
     - name: render
-      runAfter: [build-scoring]
+      runAfter: [build-terms-api]
       taskRef: {name: finance2-render}
       params: [{name: toolbox-image, value: $(params.toolbox-image)}, {name: cluster-version, value: "4.21.21"}]
       workspaces: [{name: source, workspace: source}]
+    - name: build-terms-web
+      runAfter: [build-scoring]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-build-image}
+      params:
+        - {name: builder-image, value: $(params.builder-image)}
+        - {name: component, value: terms-web}
+        - {name: context, value: .}
+        - {name: dockerfile, value: apps/terms-web/Dockerfile}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
+    - name: build-terms-api
+      runAfter: [build-terms-web]
+      when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
+      taskRef: {name: finance2-build-image}
+      params:
+        - {name: builder-image, value: $(params.builder-image)}
+        - {name: component, value: terms-api}
+        - {name: context, value: .}
+        - {name: dockerfile, value: services/terms-api/Dockerfile}
+        - {name: commit-sha, value: $(params.commit-sha)}
+      workspaces: [{name: source, workspace: source}, {name: artifacts, workspace: artifacts}]
     - name: publish
       runAfter: [render]
       when: [{input: $(params.delivery-mode), operator: in, values: [release]}]
@@ -86,6 +110,8 @@ spec:
         - {name: frontend-archive, value: $(tasks.build-frontend.results.image-archive)}
         - {name: ingestion-archive, value: $(tasks.build-ingestion.results.image-archive)}
         - {name: scoring-archive, value: $(tasks.build-scoring.results.image-archive)}
+        - {name: terms-web-archive, value: $(tasks.build-terms-web.results.image-archive)}
+        - {name: terms-api-archive, value: $(tasks.build-terms-api.results.image-archive)}
       workspaces: [{name: artifacts, workspace: artifacts}]
     - name: promote
       runAfter: [publish]
@@ -100,6 +126,8 @@ spec:
         - {name: frontend-digest, value: $(tasks.publish.results.frontend-digest)}
         - {name: ingestion-digest, value: $(tasks.publish.results.ingestion-digest)}
         - {name: scoring-digest, value: $(tasks.publish.results.scoring-digest)}
+        - {name: terms-web-digest, value: $(tasks.publish.results.terms-web-digest)}
+        - {name: terms-api-digest, value: $(tasks.publish.results.terms-api-digest)}
       workspaces: [{name: gitops, workspace: gitops}, {name: git-auth, workspace: git-auth}]
     - name: verify
       runAfter: [promote]

@@ -118,4 +118,19 @@ describe('public API boundary', () => {
       'Revise el formato.',
     );
   });
+
+  it('maps terms gate responses without displaying dependency detail', () => {
+    expect(
+      mapApiProblem({
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        detail: 'untrusted legal content',
+      }).message,
+    ).toBe('Debe revisar y aceptar los términos vigentes antes de continuar.');
+    expect(
+      mapApiProblem({
+        code: 'TERMS_SERVICE_UNAVAILABLE',
+        detail: 'internal terms host and token',
+      }).message,
+    ).toBe('No fue posible comprobar la aceptación de términos. Intente nuevamente.');
+  });
 });

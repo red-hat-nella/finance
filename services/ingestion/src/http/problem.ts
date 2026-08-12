@@ -10,6 +10,7 @@ interface ProblemOptions {
   existingApplicationId?: string;
   evaluationId?: string;
   evaluationStatus?: "error";
+  acceptanceUrl?: string;
 }
 
 export function sendProblem(
@@ -36,6 +37,9 @@ export function sendProblem(
       ...(options.evaluationId ? { evaluationId: options.evaluationId } : {}),
       ...(options.evaluationStatus
         ? { evaluationStatus: options.evaluationStatus }
+        : {}),
+      ...(options.acceptanceUrl
+        ? { acceptanceUrl: options.acceptanceUrl }
         : {}),
     });
 }

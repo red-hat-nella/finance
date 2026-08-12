@@ -11,7 +11,9 @@
   "images": {
     "frontend": {"repository":"registry.invalid/finance2/frontend","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sbomRef":"build/sbom/frontend.json","scanRef":"build/scan/frontend.json"},
     "ingestion": {"repository":"registry.invalid/finance2/ingestion","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","sbomRef":"build/sbom/ingestion.json","scanRef":"build/scan/ingestion.json"},
-    "scoring": {"repository":"registry.invalid/finance2/scoring","digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","sbomRef":"build/sbom/scoring.json","scanRef":"build/scan/scoring.json"}
+    "scoring": {"repository":"registry.invalid/finance2/scoring","digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","sbomRef":"build/sbom/scoring.json","scanRef":"build/scan/scoring.json"},
+    "termsWeb": {"repository":"registry.invalid/finance2/terms-web","digest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","sbomRef":"build/sbom/terms-web.json","scanRef":"build/scan/terms-web.json"},
+    "termsApi": {"repository":"registry.invalid/finance2/terms-api","digest":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","sbomRef":"build/sbom/terms-api.json","scanRef":"build/scan/terms-api.json"}
   },
   "checks": [{"type":"render","result":"PASS","sourceRef":"tests/platform/render","observedAt":"2026-08-09T00:00:00Z","summary":"fixtures rendered and validated"}],
   "generatedAt": "2026-08-09T00:00:00Z"

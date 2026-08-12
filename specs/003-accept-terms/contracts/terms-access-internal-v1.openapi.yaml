@@ -1,0 +1,151 @@
+openapi: 3.1.0
+info:
+  title: Decisión interna de acceso por términos
+  version: 1.0.0
+  description: Contrato interno fail-closed. Nunca retorna contenido de términos.
+  license: {name: Uso interno del proyecto, identifier: LicenseRef-Proprietary}
+servers:
+  - url: http://terms-api:8080
+security:
+  - bearerAuth: []
+    serviceToken: []
+paths:
+  /health/live:
+    get:
+      operationId: getTermsApiLiveness
+      summary: Confirma que el proceso está vivo
+      security: []
+      responses:
+        '200':
+          description: Proceso vivo
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Health'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /health/ready:
+    get:
+      operationId: getTermsApiReadiness
+      summary: Confirma que configuración, migraciones y persistencia están listas
+      description: Comprueba configuración, migraciones y DB; no exige versión vigente para evitar bloquear la administración.
+      security: []
+      responses:
+        '200':
+          description: Capaz de responder de forma determinista
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Health'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /internal/v1/access-decisions:
+    post:
+      operationId: decideTermsAccess
+      summary: Decide si el actor del JWT aceptó la versión aplicable
+      description: >-
+        Ingestion reenvía el JWT original y se autentica además como servicio. Actor y
+        ámbito se derivan del JWT. Timeout consumidor 500 ms, sin reintento inline.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [resourceClass]
+              properties:
+                resourceClass:
+                  type: string
+                  enum: [credit_business]
+      responses:
+        '200':
+          description: Decisión determinista
+          headers:
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AccessDecision'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+  headers:
+    RequestId:
+      schema: {type: string, format: uuid}
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, service]
+      properties:
+        status: {type: string, enum: [ok, ready]}
+        service: {const: terms-api}
+    AccessDecision:
+      type: object
+      additionalProperties: false
+      required: [allowed, checkedAt, reason]
+      properties:
+        allowed: {type: boolean}
+        currentVersionId: {type: [string, 'null'], format: uuid}
+        currentVersionCode: {type: [string, 'null']}
+        acceptedVersionId: {type: [string, 'null'], format: uuid}
+        checkedAt: {type: string, format: date-time}
+        reason:
+          type: string
+          enum: [ACCEPTED, ACCEPTANCE_REQUIRED, NO_EFFECTIVE_VERSION]
+        acceptanceUrl: {type: string, pattern: '^/terms(?:/|$)'}
+    Problem:
+      type: object
+      required: [type, title, status, code, retryable]
+      examples:
+        - type: https://errors.finance2.example/terms/service-unavailable
+          title: No fue posible comprobar la aceptación
+          status: 503
+          detail: El acceso permanece bloqueado hasta obtener una decisión confiable.
+          code: TERMS_SERVICE_UNAVAILABLE
+          retryable: true
+          requestId: 00000000-0000-4000-8000-000000000902
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        detail: {type: string}
+        code: {type: string}
+        retryable: {type: boolean}
+        requestId: {type: string, format: uuid}
+  responses:
+    BadRequest:
+      description: Solicitud de health inválida
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthorized:
+      description: JWT o identidad de servicio inválidos
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Forbidden:
+      description: Consumidor no autorizado
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unavailable:
+      description: No se puede producir una decisión confiable
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}

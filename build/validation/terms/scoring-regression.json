@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "scoring-regression.finance2/v1",
+  "generatedAt": "2026-08-12T17:55:26Z",
+  "classification": "SYNTHETIC_REDACTED",
+  "result": "PASS",
+  "implementationUnderTest": "unchanged-scoring-domain",
+  "repetitionsPerKnownProfile": 100,
+  "cases": {
+    "lowRisk": {
+      "result": "PASS",
+      "score": 835,
+      "riskBand": "riesgo_bajo",
+      "state": "evaluada"
+    },
+    "mediumRisk": {
+      "result": "PASS",
+      "score": 634,
+      "riskBand": "riesgo_medio",
+      "state": "revision_manual"
+    },
+    "highRisk": {
+      "result": "PASS",
+      "score": 385,
+      "riskBand": "riesgo_alto",
+      "state": "evaluada"
+    },
+    "incomplete": {
+      "result": "PASS",
+      "score": null,
+      "riskBand": null,
+      "state": "revision_manual"
+    },
+    "invalid": {
+      "result": "PASS",
+      "status": 422,
+      "partialResult": false
+    },
+    "scoringDependencyFailure": {
+      "result": "PASS",
+      "statuses": [
+        502,
+        504
+      ],
+      "retryable": true,
+      "partialResult": false
+    }
+  },
+  "redaction": {
+    "applicantData": "OMITTED",
+    "tokens": "OMITTED",
+    "rawResponses": "OMITTED"
+  }
+}

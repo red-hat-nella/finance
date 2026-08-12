@@ -7,7 +7,15 @@ services:
       POSTGRES_DB: ${DATABASE_NAME:-alternative_scoring}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
-    secrets: [postgres_admin_password,postgres_password,postgres_retention_password]
+      TERMS_DATABASE_NAME: ${TERMS_DATABASE_NAME:-terms_local}
+    secrets:
+      - postgres_admin_password
+      - postgres_password
+      - postgres_retention_password
+      - terms_runtime_password
+      - terms_migrator_password
+      - terms_retention_password
+      - terms_backup_password
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres-init/001-create-roles.sh:/docker-entrypoint-initdb.d/001-create-roles.sh:ro,Z
@@ -77,6 +85,7 @@ services:
       migrations: {condition: service_completed_successfully}
       scoring: {condition: service_healthy}
       dev-auth: {condition: service_healthy}
+      terms-api: {condition: service_healthy}
     environment:
       NODE_ENV: development
       PORT: 8080
@@ -95,7 +104,15 @@ services:
       AUTH_ISSUER: http://dev-auth:8080
       AUTH_JWKS_URL: http://dev-auth:8080/.well-known/jwks.json
       AUTH_AUDIENCE: alternative-credit-scoring
-    secrets: [postgres_password,scoring_service_token,pii_encryption_key,pii_hmac_key]
+      TERMS_ACCESS_BASE_URL: http://terms-api:8080
+      TERMS_ACCESS_TIMEOUT_MS: 500
+      TERMS_SERVICE_TOKEN_FILE: /run/secrets/terms_internal_service_token
+    secrets:
+      - postgres_password
+      - scoring_service_token
+      - pii_encryption_key
+      - pii_hmac_key
+      - terms_internal_service_token
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health/ready').then(r=>{if(!r.ok)process.exit(1)})\""]
       interval: 5s
@@ -142,11 +159,104 @@ services:
     secrets: [postgres_password]
     networks: [backend]
 
+  terms-migrations:
+    build:
+      context: ../..
+      dockerfile: services/terms-api/Dockerfile
+    depends_on:
+      postgres: {condition: service_healthy}
+    command: ["node", "services/terms-api/dist/jobs/migrate.js"]
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${TERMS_DATABASE_NAME:-terms_local}
+      DATABASE_USER: terms_migrator
+      DATABASE_PASSWORD_FILE: /run/secrets/terms_migrator_password
+      DATABASE_SSL_MODE: disable
+    secrets: [terms_migrator_password]
+    volumes:
+      - ../../db/terms-migrations:/opt/app-root/src/migrations:ro,Z
+    restart: "no"
+    networks: [backend]
+
+  terms-api:
+    build:
+      context: ../..
+      dockerfile: services/terms-api/Dockerfile
+    depends_on:
+      terms-migrations: {condition: service_completed_successfully}
+      dev-auth: {condition: service_healthy}
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${TERMS_DATABASE_NAME:-terms_local}
+      DATABASE_USER: terms_app
+      DATABASE_PASSWORD_FILE: /run/secrets/terms_runtime_password
+      DATABASE_SSL_MODE: disable
+      AUTH_ISSUER: http://dev-auth:8080
+      AUTH_JWKS_URL: http://dev-auth:8080/.well-known/jwks.json
+      AUTH_AUDIENCE: alternative-credit-scoring
+      AUTH_ALLOWED_ALGORITHMS: RS256
+      TERMS_SERVICE_TOKEN_FILE: /run/secrets/terms_internal_service_token
+      TERMS_FINGERPRINT_KEY_FILE: /run/secrets/terms_fingerprint_key
+      LOG_LEVEL: info
+    secrets: [terms_runtime_password,terms_internal_service_token,terms_fingerprint_key]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health/ready').then(r=>{if(!r.ok)process.exit(1)})\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  terms-retention:
+    profiles: [jobs]
+    build:
+      context: ../..
+      dockerfile: services/terms-api/Dockerfile
+    depends_on:
+      terms-migrations: {condition: service_completed_successfully}
+    command: ["node", "services/terms-api/dist/jobs/retention.js"]
+    environment:
+      NODE_ENV: development
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${TERMS_DATABASE_NAME:-terms_local}
+      DATABASE_USER: terms_retention
+      DATABASE_PASSWORD_FILE: /run/secrets/terms_retention_password
+      DATABASE_SSL_MODE: disable
+      RETENTION_BATCH_SIZE: 500
+    secrets: [terms_retention_password]
+    networks: [backend]
+
+  terms-web:
+    build:
+      context: ../..
+      dockerfile: apps/terms-web/Dockerfile
+    depends_on:
+      terms-api: {condition: service_started}
+    environment:
+      TERMS_API_BASE_URL: /terms-api
+      AUTH_MODE: development
+      OIDC_ISSUER: http://dev-auth:8080
+      OIDC_CLIENT_ID: terms-web-local
+      OIDC_SCOPE: openid profile
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health/live >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
   frontend:
     build:
       context: ../../frontend
     depends_on:
       ingestion: {condition: service_healthy}
+      terms-api: {condition: service_healthy}
+      terms-web: {condition: service_healthy}
     ports:
       - "${FRONTEND_PORT:-8080}:8080"
     environment:

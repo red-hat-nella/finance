@@ -48,3 +48,54 @@ spec:
             - name: target
               projected: {defaultMode: 256, sources: [{secret: {name: backup-target, items: [{key: upload-curl.conf, path: upload-curl.conf}, {key: encryption-passphrase, path: encryption-passphrase}]}}]}
             - {name: work, emptyDir: {sizeLimit: 2Gi}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: terms-backup
+  labels: {app.kubernetes.io/name: terms-backup, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}
+  annotations: {platform.finance2/state: PENDING_VALIDATION, platform.finance2/rpo: 24h-default-adjustable}
+spec:
+  schedule: "45 1 * * *"
+  timeZone: Etc/UTC
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata: {labels: {app.kubernetes.io/name: terms-backup, app.kubernetes.io/component: database-job, app.kubernetes.io/part-of: alternative-credit-scoring}}
+        spec:
+          serviceAccountName: terms-backup
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: terms-backup
+              image: registry.redhat.io/rhel9/postgresql-16@sha256:b3a61b02f3e9b40160449463eb692e86d8a8386f443b96ac0802f92e50ac87e4
+              command: [/bin/bash, -c]
+              args:
+                - |
+                  set -euo pipefail
+                  export PGPASSWORD="$(</run/secrets/database/database-backup-password)"
+                  archive="/work/terms-$(date -u +%Y%m%dT%H%M%SZ).dump.enc"
+                  pg_dump -h postgres -U terms_backup -d terms --schema=terms --format=custom --no-owner --no-privileges \
+                    | openssl enc -aes-256-cbc -salt -pbkdf2 -pass file:/run/secrets/target/encryption-passphrase -out "$archive"
+                  curl --fail --silent --show-error --config /run/secrets/target/upload-curl.conf --upload-file "$archive"
+              resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
+              securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, readOnlyRootFilesystem: true}
+              volumeMounts:
+                - {name: database, mountPath: /run/secrets/database, readOnly: true}
+                - {name: target, mountPath: /run/secrets/target, readOnly: true}
+                - {name: work, mountPath: /work}
+          volumes:
+            - name: database
+              projected: {defaultMode: 256, sources: [{secret: {name: terms-backup, items: [{key: database-backup-password, path: database-backup-password}]}}]}
+            - name: target
+              projected: {defaultMode: 256, sources: [{secret: {name: terms-backup-target, items: [{key: upload-curl.conf, path: upload-curl.conf}, {key: encryption-passphrase, path: encryption-passphrase}]}}]}
+            - {name: work, emptyDir: {sizeLimit: 2Gi}}

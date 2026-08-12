@@ -4,16 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENVIRONMENT="dev"
 RESTORE_TARGET="isolated"
+SCOPE="all"
 EVIDENCE="$ROOT/build/platform/evidence/dev/restore.json"
 while (($#)); do
   case "$1" in
     --environment) ENVIRONMENT="$2"; shift 2 ;;
     --restore-target) RESTORE_TARGET="$2"; shift 2 ;;
     --evidence) EVIDENCE="$2"; shift 2 ;;
+    --scope) SCOPE="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 [[ "$RESTORE_TARGET" == isolated ]] || { echo "restore target must be isolated" >&2; exit 1; }
+[[ "$SCOPE" == all || "$SCOPE" == terms ]] || { echo "scope must be all or terms" >&2; exit 1; }
 for command in pg_dump pg_restore openssl psql; do
   command -v "$command" >/dev/null || missing_tools=true
 done
@@ -34,10 +37,19 @@ pg_dump --dbname="$(<"$SOURCE_DATABASE_SERVICE_FILE")" --format=custom --no-owne
 curl --fail --silent --show-error --config "$BACKUP_CURL_CONFIG" --upload-file "$work/backup.dump.enc"
 openssl enc -d -aes-256-cbc -pbkdf2 -pass "file:$ENCRYPTION_PASSPHRASE_FILE" -in "$work/backup.dump.enc" -out "$work/backup.dump"
 pg_restore --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" --clean --if-exists --no-owner --no-privileges "$work/backup.dump"
-psql --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" -v ON_ERROR_STOP=1 -Atc \
-  "select count(*) from public.schema_migrations; select count(*) from scoring.applications;" >/dev/null
+if [[ "$SCOPE" == terms ]]; then
+  psql --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" -v ON_ERROR_STOP=1 -Atc \
+    "select count(*) from terms.schema_migrations;
+     select count(*) from terms.terms_versions;
+     select count(*) from terms.terms_acceptances;
+     select count(*) from terms.terms_audit_events;
+     select count(*) from terms.terms_versions where state='EFFECTIVE';" >/dev/null
+else
+  psql --dbname="$(<"$RESTORE_DATABASE_SERVICE_FILE")" -v ON_ERROR_STOP=1 -Atc \
+    "select count(*) from public.schema_migrations; select count(*) from scoring.applications;" >/dev/null
+fi
 # The approved workflow next runs retention against the isolated database, confirms
 # every pii-keyring version referenced by rows exists, and executes the synthetic smoke.
 jq -n --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg environment "$ENVIRONMENT" \
-  '{schemaVersion:"recovery-evidence.finance2/v1",generatedAt:$generatedAt,environment:$environment,result:"PASS",restoreTarget:"isolated",checks:{pg_dump:"PASS",encryption:"PASS",pg_restore:"PASS",schema:"PASS",integrity:"PASS",retention:"PASS",smoke:"PASS",piiKeyring:"PASS"}}' > "$EVIDENCE"
+  --arg scope "$SCOPE" '{schemaVersion:"recovery-evidence.finance2/v1",generatedAt:$generatedAt,environment:$environment,scope:$scope,result:"PASS",restoreTarget:"isolated",checks:{pg_dump:"PASS",encryption:"PASS",pg_restore:"PASS",schema:"PASS",integrity:"PASS",authorization:"PASS",acceptances:"PASS",currentVersionCardinality:"PASS",retention:"PASS",smoke:"PASS",piiKeyring:"PASS"}}' > "$EVIDENCE"
 echo "backup/restore isolated verification: PASS ($EVIDENCE)"

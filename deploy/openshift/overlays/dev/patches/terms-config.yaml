@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: terms-api-config
+  annotations: {platform.finance2/state: DESIRED}
+data:
+  NODE_ENV: development
+  DATABASE_HOST: postgres
+  DATABASE_NAME: terms
+  DATABASE_SSL_MODE: disable
+  AUTH_ISSUER: https://identity.invalid
+  AUTH_JWKS_URL: https://identity.invalid/.well-known/jwks.json
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: terms-web-config
+  annotations: {platform.finance2/state: DESIRED}
+data:
+  OIDC_ISSUER: https://identity.invalid

@@ -2,12 +2,21 @@
   "name": "alternative-credit-scoring-tools",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "packages/ui-foundation",
+    "apps/terms-web",
+    "services/terms-api"
+  ],
   "scripts": {
-    "contracts:lint": "redocly lint specs/001-alternative-credit-scoring/contracts/ingestion-public-v1.openapi.yaml specs/001-alternative-credit-scoring/contracts/scoring-internal-v1.openapi.yaml",
+    "contracts:lint": "redocly lint specs/001-alternative-credit-scoring/contracts/ingestion-public-v1.openapi.yaml specs/001-alternative-credit-scoring/contracts/scoring-internal-v1.openapi.yaml specs/003-accept-terms/contracts/terms-public-v1.openapi.yaml specs/003-accept-terms/contracts/terms-access-internal-v1.openapi.yaml",
     "contracts:bundle": "bash scripts/contracts/validate.sh --bundle",
-    "contracts:generate": "bash scripts/contracts/generate-public.sh && bash scripts/contracts/generate-scoring.sh",
+    "contracts:generate": "bash scripts/contracts/generate-public.sh && bash scripts/contracts/generate-scoring.sh && bash scripts/contracts/generate-terms-public.sh && bash scripts/contracts/generate-terms-internal.sh",
     "contracts:test": "node --test tests/contract/openapi-contracts.test.mjs",
-    "platform:contracts": "node scripts/platform/validate-contracts.mjs --all"
+    "platform:contracts": "node scripts/platform/validate-contracts.mjs --all",
+    "terms:build": "npm run build --workspace @finance2/terms-api && npm run build --workspace @finance2/terms-web",
+    "terms:lint": "npm run lint --workspace @finance2/terms-api && npm run lint --workspace @finance2/terms-web",
+    "terms:typecheck": "npm run typecheck --workspace @finance2/terms-api && npm exec --workspace @finance2/terms-web -- tsc --noEmit -p tsconfig.app.json",
+    "terms:test": "npm run test --workspace @finance2/terms-api && npm run test --workspace @finance2/terms-web"
   },
   "devDependencies": {
     "@redocly/cli": "2.15.0",

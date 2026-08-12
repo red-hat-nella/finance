@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "terms-quickstart-evidence.finance2/v1",
+  "generatedAt": "2026-08-12T17:59:42Z",
+  "classification": "SYNTHETIC_REDACTED",
+  "result": "PENDING_VALIDATION",
+  "checks": {
+    "contractBundles": {
+      "result": "PASS",
+      "termsPublicSha256": "eb951584ef718c8b9caa0775db094bd27d15d37dc4377eb2879f97aba49b5aa1",
+      "termsInternalSha256": "4ade5fd36ff361feac0c90c3e797cbe876941d584b9f9379a74be0b2aecab747"
+    },
+    "generatedClientsCurrent": "PASS",
+    "migrationsAndAcceptance": "PASS",
+    "lifecycleSmoke": "PASS",
+    "retention": "PASS",
+    "restore": {
+      "result": "PENDING_VALIDATION",
+      "reason": "approved backup target or local recovery tools are unavailable"
+    },
+    "liveGatewaySmoke": "PENDING_VALIDATION",
+    "visualAndAccessibility": {
+      "result": "PASS",
+      "viewports": [
+        "320x568",
+        "375x667",
+        "768x1024",
+        "1024x768",
+        "1440x900"
+      ]
+    }
+  },
+  "notes": [
+    "Live gateway smoke and isolated restore require the approved target platform.",
+    "No token, actor identifier, legal content, acceptance row or raw response is retained."
+  ]
+}

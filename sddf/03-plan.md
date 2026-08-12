@@ -6,7 +6,21 @@ Al generar `plan.md`, disena e implementa el despliegue OpenShift completo a par
 
 Regla principal de autonomia
 
-Aplica este orden antes de formular cualquier pregunta:
+Aplica primero este gate, antes de leer o modificar la feature:
+
+0. `VALIDAR_SESION_OPENSHIFT`:
+   - ejecuta `command -v oc`, `oc whoami` y `oc whoami --show-server` sin leer Secrets;
+   - si `oc` existe pero no hay una sesion autenticada valida, detente inmediatamente
+     con `OPENSHIFT_SESSION_REQUIRED` y solicita al usuario ejecutar `oc login` por su
+     mecanismo seguro;
+   - no solicites tokens, contrasenas, kubeconfigs ni certificados por chat;
+   - no inspecciones el repositorio, no generes ni edites artefactos, no construyas
+     imagenes y no intentes ningun despliegue hasta que el usuario confirme el login y
+     el preflight repetido sea exitoso;
+   - si `oc` no esta instalado, emite `OPENSHIFT_CLI_REQUIRED` y deten el flujo antes de
+     continuar, indicando solamente que debe instalarse una version compatible.
+
+Solo despues de superar ese gate, aplica este orden antes de formular preguntas:
 
 1. `INFERIR`: inspecciona especificacion, contratos, codigo, Dockerfiles, configuracion, dependencias, puertos, comandos, migraciones y pruebas.
 2. `DECIDIR`: usa defaults simples, soportados, reversibles y compatibles con OpenShift.
@@ -17,6 +31,21 @@ Aplica este orden antes de formular cualquier pregunta:
 1. Construir el modelo de despliegue desde la arquitectura real
 
 Genera una matriz por componente con: origen en la especificacion o codigo, comando de ejecucion, puertos, protocolo, dependencias, configuracion, secretos referenciados, estado, escalado, exposicion, probes y recurso OpenShift elegido.
+
+Antes de disenar el estado final, genera un delta de arquitectura con tres vistas:
+
+- composicion local anterior;
+- composicion local resultante de la feature;
+- estado deseado y, cuando exista acceso, estado observado de OpenShift.
+
+Clasifica cada componente como `UNCHANGED`, `MODIFIED`, `ADDED` o `REMOVED`. Un
+componente `ADDED`, especialmente un nuevo microservicio, no se considera implementado
+hasta incorporar su imagen, Deployment o controlador adecuado, Service, ServiceAccount,
+configuracion, referencias de Secret, probes, recursos, NetworkPolicies, migraciones,
+Jobs/CronJobs, observabilidad, pipeline y Route solo si realmente necesita entrada
+externa. Para `MODIFIED`, propaga al overlay y al pipeline todos los cambios que alteren
+su ejecucion o sus relaciones. Para `REMOVED`, planifica una retirada segura y explicita;
+nunca borres datos persistentes por inferencia.
 
 Selecciona recursos segun el comportamiento:
 
@@ -81,6 +110,13 @@ Por workload define cuando aplique:
 
 4. Automatizar build, promocion y reconciliacion
 
+Esta seccion se ejecuta como fase de cierre de la feature. Durante la implementacion se
+preparan y validan codigo, contratos, migraciones, imagenes y manifiestos, pero no se
+redepliega el cluster despues de cada cambio de linea, archivo o tarea. Cuando todas las
+tareas funcionales y de plataforma de la feature hayan pasado localmente, se ejecuta
+una unica secuencia coordinada de publicacion y convergencia. Solo una falla de esa
+secuencia puede provocar una correccion y una nueva ejecucion completa.
+
 Implementa un flujo estable de GitOps:
 
 1. `inspect`: valida la coherencia entre arquitectura, contratos y artefactos.
@@ -94,6 +130,14 @@ Implementa un flujo estable de GitOps:
 9. `verify`: comprueba migraciones, rollout, conectividad, Routes, persistencia y smoke tests.
 10. `report`: registra commit, digests, ambiente, resultado, evidencia y revision a usar para rollback.
 
+Despues de `inspect`, el pipeline debe ejecutar una puerta de paridad de topologia que
+compare los servicios ejecutables de la composicion local con los recursos renderizados.
+Debe fallar si una capacidad local nueva carece de realizacion OpenShift o si no se
+actualizaron sus dependencias, comunicacion o configuracion. Despues de `verify`, una
+puerta de paridad funcional debe ejecutar el mismo escenario sintetico esencial en
+local y en OpenShift y comparar sus resultados observables permitiendo solo diferencias
+de infraestructura declaradas por ambiente.
+
 Usa OpenShift Pipelines y Pipelines as Code cuando esten disponibles. Si el repositorio ya utiliza otro CI aprobado, implementa las mismas puertas y conserva GitOps como fuente de verdad. Produccion no debe usar `latest` ni reconstruir una imagen ya validada en un ambiente anterior.
 
 5. Separar bootstrap de operacion continua
@@ -102,6 +146,11 @@ El plan debe producir dos flujos ejecutables:
 
 - `Bootstrap`: verificar capacidades, crear o seleccionar namespaces autorizados, establecer identidades y RBAC, conectar registro y repositorios, registrar referencias de secretos e instalar la configuracion inicial de GitOps. No instales operadores ni concedas privilegios de cluster sin autorizacion explicita.
 - `Operacion continua`: desde un merge, construir, verificar, promover, reconciliar, probar y reportar sin que el cliente ejecute comandos de despliegue.
+
+Ambos flujos comienzan con el gate `VALIDAR_SESION_OPENSHIFT`. Un fallo de sesion debe
+terminar el proceso antes de ejecutar descubrimiento, build, render, dry-run o cualquier
+mutacion. Los scripts deben devolver un codigo distinto de cero y un mensaje corto que
+indique ejecutar `oc login`, sin imprimir informacion de autenticacion.
 
 Clasifica toda entrada de plataforma como:
 
@@ -138,8 +187,11 @@ Incluye una matriz ejecutable de verificaciones:
 - smoke test del flujo funcional principal y pruebas de dependencias criticas;
 - promocion de la misma imagen entre ambientes;
 - rollback probado a una revision saludable, incluyendo el tratamiento de datos.
+- inventario de paridad local/OpenShift sin componentes ejecutables omitidos;
+- creacion y readiness de todos los recursos requeridos por componentes `ADDED`;
+- smoke de la feature nueva y regresion de los flujos que ya existian, ejecutados en el ambiente OpenShift autorizado.
 
-El trabajo de plataforma esta terminado solo cuando un cambio representativo completa `commit -> pruebas -> imagen por digest -> cambio GitOps -> reconciliacion -> verificacion`, sin pasos manuales ordinarios del cliente. Si no hay acceso al cluster, indica claramente que la validacion dinamica queda pendiente, pero entrega los artefactos, esquemas, renderizado, pruebas estaticas y comandos automatizados.
+El trabajo de plataforma esta terminado solo cuando un cambio representativo completa `commit -> pruebas -> imagen por digest -> cambio GitOps -> reconciliacion -> verificacion`, sin pasos manuales ordinarios del cliente. Si GitOps no existe en un ambiente no productivo autorizado, el flujo debe cambiar automaticamente a `commit -> pruebas -> imagen por digest -> render -> server-side dry-run -> direct apply -> rollout -> smoke -> evidencia DIRECT_APPLY_DEVIATION`. Si no hay acceso al cluster o falta una aprobacion de produccion, indica claramente que la validacion dinamica queda pendiente, pero entrega los artefactos, esquemas, renderizado, pruebas estaticas y comandos automatizados.
 
 8. Salida obligatoria de `plan.md`
 
@@ -156,6 +208,8 @@ El plan debe incluir:
 - matriz de pruebas de plataforma con comando o herramienta, resultado esperado y evidencia;
 - riesgos y alternativas dependientes de capacidades no confirmadas;
 - secuencia concreta que pueda convertirse directamente en `tasks.md`.
+- matriz de delta y paridad local/OpenShift, incluyendo el recurso y la prueba que materializan cada componente agregado o modificado;
+- decision automatica `GITOPS_RECONCILED` o `DIRECT_APPLY_DEVIATION`, con el comando idempotente que ejecutara la convergencia del ambiente.
 
 9. Documentacion final de lo creado
 
@@ -181,14 +235,21 @@ Cada dato debe marcar su procedencia y estado como `DECLARED`, `OBSERVED` o `PEN
 
 Si no existe conexion al cluster, genera la documentacion con los valores declarados y marca como `PENDING_VALIDATION` el cluster, URLs asignadas, estado, pods observados y demas valores dinamicos. Tras el primer despliegue, la automatizacion debe actualizar o complementar el documento con evidencia real. La documentacion debe validarse como una salida obligatoria del pipeline o de la tarea final de entrega y mantenerse sincronizada cuando cambien manifiestos, endpoints o topologia.
 
-Si queda un bloqueo externo, emite una unica seccion `PLATFORM_INPUT_REQUIRED` al final. Incluye solo el dato indispensable, por que no puede inferirse o descubrirse, quien debe proporcionarlo y como referenciarlo de forma segura. No detengas ningun trabajo que pueda completarse sin ese dato.
+Si queda un bloqueo externo despues de superar el preflight de sesion, emite una unica seccion `PLATFORM_INPUT_REQUIRED` al final. Incluye solo el dato indispensable, por que no puede inferirse o descubrirse, quien debe proporcionarlo y como referenciarlo de forma segura. No detengas ningun trabajo que pueda completarse sin ese dato. Esta regla no permite continuar cuando exista `OPENSHIFT_SESSION_REQUIRED` o `OPENSHIFT_CLI_REQUIRED`, que son bloqueos previos absolutos.
 
 'oc' ya esta instalado y autenticado, `usa un proyecto nuevo a menos que se especifique el proyecto a usar` y comienza a trabajar en el. Usa el MCP 'kubernetes-mcp-server@latest'.
 
-10. Fallback ejecutable para un cluster de prueba sin GitOps
+10. Fallback ejecutable y automatico para un cluster no productivo sin GitOps
 
-Este fallback solo se activa con autorizacion explicita y debe producir una
-`DIRECT_APPLY_DEVIATION`. No reemplaza la arquitectura GitOps del plan.
+Este fallback se activa automaticamente cuando el descubrimiento confirma que GitOps
+no esta operativo en el cluster no productivo autorizado y debe producir una
+`DIRECT_APPLY_DEVIATION`. No reemplaza la arquitectura GitOps del plan ni autoriza una
+promocion directa a produccion.
+
+Antes del paso 1, `oc whoami` y `oc whoami --show-server` deben aprobarse. Si no hay
+sesion, no se intenta descubrir GitOps, crear un proyecto, renderizar, aplicar ni hacer
+smoke: el flujo termina con `OPENSHIFT_SESSION_REQUIRED` y espera a que el usuario
+realice `oc login`.
 
 1. Descubrir por lectura version, namespace autorizado, cuotas, SCC, registro,
    StorageClass, dominio de Route, DNS y APIs opcionales. Distinguir Argo Workflows,
@@ -204,6 +265,8 @@ Este fallback solo se activa con autorizacion explicita y debe producir una
    eliminar Jobs/CronJobs cuyas dependencias externas se hayan pospuesto. No parchear
    la base ni produccion para acomodar la demo.
 5. Renderizar y ejecutar validacion local, politicas y `oc apply --dry-run=server`.
+   Antes del dry-run, comparar la composicion local con el render: si aparece un nuevo
+   microservicio o proceso, fallar hasta que todos sus recursos aplicables esten incluidos.
 6. Aplicar primero identidades, configuracion, Services, NetworkPolicies, PVC y datos.
    Esperar el StatefulSet antes de crear el Job de migracion.
 7. Ejecutar una migracion finita y bloquear los Deployments hasta que el Job termine.
@@ -213,6 +276,24 @@ Este fallback solo se activa con autorizacion explicita y debe producir una
    que cree, procese y consulte una entidad sintetica.
 9. Registrar URL, replicas, digests, PVC, migracion, smoke y todas las capacidades
    pendientes. Importar el overlay en GitOps cuando la API `Application` exista.
+10. En cambios posteriores, repetir automaticamente descubrimiento, render, dry-run,
+    apply, rollout y smoke una vez al cierre de cada feature completa, no por cada
+    edicion intermedia. `oc apply` debe crear los recursos nuevos y reconciliar los
+    existentes desde el overlay completo; no mantener una lista manual que pueda omitir
+    un microservicio agregado por la feature.
+
+Contrato de paridad local/OpenShift
+
+- La composicion local es una fuente de descubrimiento, no la fuente de seguridad de
+  produccion. Se trasladan capacidades y comportamientos, no credenciales ni bypasses.
+- Cada servicio local debe mapearse por nombre logico a un controlador OpenShift o a
+  una dependencia administrada declarada. Toda excepcion requiere motivo y estado.
+- Los endpoints, contratos, migraciones y flujos visibles deben coincidir. Hostnames,
+  TLS, replicas, StorageClasses y mecanismos de secretos pueden variar por ambiente.
+- El validador debe comparar inventarios y ejecutar smoke tests; si OpenShift no refleja
+  el cambio local, el despliegue falla y la feature permanece incompleta.
+- El reporte final debe enumerar recursos `CREATED`, `CONFIGURED`, `ROLLED_OUT` y
+  `VERIFIED`, ademas de cualquier `PENDING_VALIDATION`, sin afirmar estados no observados.
 
 Lecciones de diagnostico que deben automatizarse
 

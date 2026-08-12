@@ -20,6 +20,14 @@ export const configSchema = z.object({
     criteriaVersion: z.literal("SCORING-MVP-1.0.0"),
     token: z.string().min(32),
   }),
+  termsAccess: z
+    .object({
+      baseUrl: z.string().url(),
+      timeoutMs: z.literal(500),
+      token: z.string().min(32),
+    })
+    .optional(),
+  termsGateTestBypass: z.boolean().default(false),
   auth: z.object({
     issuer: z.string().url(),
     audience: z.string().min(3),
@@ -34,5 +42,13 @@ export const configSchema = z.object({
   }),
   corsAllowedOrigins: z.array(z.string().url()),
   logLevel: z.enum(["debug", "info", "warn", "error"]),
+}).superRefine((config, context) => {
+  if (config.nodeEnv === "production" && config.termsGateTestBypass) {
+    context.addIssue({
+      code: "custom",
+      path: ["termsGateTestBypass"],
+      message: "terms gate bypass is forbidden in production",
+    });
+  }
 });
 export type AppConfig = z.infer<typeof configSchema>;
